@@ -1,0 +1,129 @@
+weapons:
+  slam_mace:
+    enabled: true
+    commands:
+      get: ['getslammace']
+    display-id: 'ꜱʟᴀᴍ ᴍᴀᴄᴇ'
+    item:
+      material: [MACE, NETHERITE_AXE, DIAMOND_AXE]
+      name: '<#FFA500><bold>ꜱ<#FFAD00><bold>ʟ<#FFB500><bold>ᴀ<#FFBE00><bold>ᴍ <#FFC600><bold>ᴍ<#FFCE00><bold>ᴀ<#FFD700><bold>ᴄ<#FFDF00><bold>ᴇ'
+      lore: ['<gray>Shift right click to slam down on players', '<gray>This ability also clears webs', '', '<dark_gray>Cooldown: 25 secs']
+    legacy:
+      names-contains: ['ꜱʟᴀᴍ ᴍᴀᴄᴇ']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 25
+    ability:
+      type: SLAM_MACE
+      upward: 1.6
+      downward: 3.0
+      clear-web-radius: 7
+
+  zoom_mace:
+    enabled: true
+    commands:
+      get: ['getzoommace']
+    display-id: 'ᴢᴏᴏᴍ ᴍᴀᴄᴇ'
+    item:
+      material: [MACE, NETHERITE_AXE, DIAMOND_AXE]
+      name: '<#00FFFF><bold>ᴢ<#00D4FF><bold>ᴏ<#00AAFF><bold>ᴏ<#007FFF><bold>ᴍ <#0055FF><bold>ᴍ<#002AFF><bold>ᴀ<#0000FF><bold>ᴄ<#0000FF><bold>ᴇ'
+      lore: ['<gray>Shift right click to launch 30 blocks high!', '<gray>Crash down and deal area damage.', '', '<dark_gray>Cooldown: 40 secs']
+    legacy:
+      names-contains: ['ᴢᴏᴏᴍ ᴍᴀᴄᴇ']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 40
+    ability:
+      type: ZOOM_MACE
+      upward: 5.0
+      downward: 4.0
+      radius: 6.0
+      damage: 8.0
+
+  tide_trident:
+    enabled: true
+    commands:
+      get: ['gettidetrident']
+    display-id: 'ᴛɪᴅᴇ ᴛʀɪᴅᴇɴᴛ'
+    item:
+      material: [TRIDENT]
+      name: '<#00FFFF><bold>ᴛ<#00DDFF><bold>ɪ<#00BBFF><bold>ᴅ<#0099FF><bold>ᴇ <#0077FF><bold>ᴛ<#0055FF><bold>ʀ<#0033FF><bold>ɪ<#0011FF><bold>ᴅ<#0000EE><bold>ᴇ<#0000CC><bold>ɴ<#0000AA><bold>ᴛ'
+      lore: ['<gray>Shift right click to dash forward!', '<gray>Blasts nearby enemies with Wither.', '', '<dark_gray>Cooldown: 35 secs']
+    legacy:
+      names-contains: ['ᴛɪᴅᴇ ᴛʀɪᴅᴇɴᴛ']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 35
+    ability:
+      type: TIDE_TRIDENT
+      forward: 3.5
+      radius: 7.0
+      duration: 5
+      effect: 'WITHER:1:5'
+
+  explosive_mace:
+    enabled: true
+    commands:
+      get: ['getexplosivemace']
+    display-id: 'ᴇxᴘʟᴏꜱɪᴠᴇ ᴍᴀᴄᴇ'
+    item:
+      material: [MACE, NETHERITE_AXE, DIAMOND_AXE]
+      name: '<#FF0000><bold>ᴇ<#EE0000><bold>x<#DD0000><bold>ᴘ<#CC0000><bold>ʟ<#BB0000><bold>ᴏ<#AA0000><bold>ꜱ<#990000><bold>ɪ<#880000><bold>ᴠ<#770000><bold>ᴇ <#660000><bold>ᴍ<#550000><bold>ᴀ<#440000><bold>ᴄ<#330000><bold>ᴇ'
+      lore: ['<gray>Shift right click to enter a rage!', '<gray>Buffs you and levitates nearby enemies.', '', '<dark_gray>Cooldown: 30 secs']
+    legacy:
+      names-contains: ['ᴇxᴘʟᴏꜱɪᴠᴇ ᴍᴀᴄᴇ']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 30
+    ability:
+      type: EXPLOSIVE_MACE
+      radius: 5.0
+      effects:
+        - 'FAST_DIGGING:3:5'
+        - 'REGENERATION:3:5'
+        - 'INCREASE_DAMAGE:3:5'
+      victim-effects:
+        - 'LEVITATION:1:1'
+
+  flow_spear:
+    enabled: true
+    commands:
+      get: ['getflowspear']
+    display-id: 'ꜰʟᴏᴡ ꜱᴘᴇᴀʀ'
+    item:
+      material: [NETHERITE_SPEAR, TRIDENT, NETHERITE_SWORD, DIAMOND_SWORD]
+      name: '<#00FFAA><bold>ꜰ<#33FFBB><bold>ʟ<#66FFCC><bold>ᴏ<#99FFDD><bold>ᴡ <#CCFFEE><bold>ꜱ<#DDFFFF><bold>ᴘ<#EEFFFF><bold>ᴇ<#FFFFFF><bold>ᴀ<#FFFFFF><bold>ʀ'
+      lore: ['<gray>Shift right click to dash forward!', '', '<dark_gray>Cooldown: 30 secs']
+    legacy:
+      names-contains: ['ꜰʟᴏᴡ ꜱᴘᴇᴀʀ']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 30
+    ability:
+      type: FLOW_SPEAR
+      upward: 0.4
+      forward: 4.0
+
+  warrior_spear:
+    enabled: true
+    commands:
+      get: ['getwarriorspear']
+    display-id: 'ᴡᴀʀʀɪᴏʀ ꜱᴘᴇᴀʀ'
+    item:
+      material: [NETHERITE_SPEAR, TRIDENT, NETHERITE_SWORD, DIAMOND_SWORD]
+      name: '<#990000><bold>ᴡ<#B30000><bold>ᴀ<#CC0000><bold>ʀ<#E60000><bold>ʀ<#FF3300><bold>ɪ<#FF6600><bold>ᴏ<#FF9900><bold>ʀ <#FF5500><bold>ꜱ<#FF6600><bold>ᴘ<#FF7700><bold>ᴇ<#FF8800><bold>ᴀ<#FF9900><bold>ʀ'
+      lore: ['<gray>Shift right click to trigger a combat battle cry!', '<gray>Grants Strength III, Speed III, and Absorption II.', '', '<dark_gray>Cooldown: 40 secs']
+    legacy:
+      names-contains: ['ᴡᴀʀʀɪᴏʀ ꜱᴘᴇᴀʀ']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 40
+    ability:
+      type: SELF_BUFF
+      duration: 6
+      sounds: ['ENTITY_RAVAGER_ROAR']
+      particle: ANGRY_VILLAGER
+      effects:
+        - 'INCREASE_DAMAGE:3:6'
+        - 'SPEED:3:6'
+        - 'ABSORPTION:2:6'

@@ -1,0 +1,73 @@
+settings:
+  debug: false
+  default-menu: admin
+  weapons-folder: weapons
+  custom-weapons-file: weapons/custom-weapons.yml
+  give-created-weapons-pdc-identity: true
+  detect-legacy-items: true
+  require-sneak-for-default-abilities: true
+  max-air-loop-ticks: 120
+  max-target-distance: 32
+  menu-click-cooldown-ms: 150
+  ready-notification: true
+  reset-cooldowns-on-quit: true
+  require-use-permission: false
+sounds:
+  enabled: true
+  deny: BLOCK_NOTE_BLOCK_BASS
+  reload: ENTITY_PLAYER_LEVELUP
+  ready: ENTITY_EXPERIENCE_ORB_PICKUP
+  menu-open: BLOCK_CHEST_OPEN
+  menu-click: UI_BUTTON_CLICK
+
+engine:
+  max-active-casts-per-player: 3
+  max-active-projectiles-per-player: 10
+  max-active-projectiles-global: 200
+  max-projectile-lifetime-ticks: 600
+  max-active-temporary-blocks-global: 5000
+  max-block-changes-per-tick: 300
+  max-particles-per-tick-per-player: 250
+  max-shape-points: 4096
+  max-timeline-duration-ticks: 400
+  max-timeline-entries: 512
+  max-air-loop-ticks: 200
+  max-target-distance: 32
+  restore-real-blocks-on-disable: true
+  restore-real-blocks-on-reload: true
+  clear-virtual-blocks-on-reload: true
+virtual-blocks:
+  enabled: true
+  default-mode: fake
+  force-packet-only: true
+  cleanup-particle: WHITE_SMOKE
+  refresh-on-interact: true
+  refresh-on-join: true
+  refresh-on-move-nearby: false
+  viewer-radius: 48
+real-blocks:
+  enabled: false
+  restore-original-block: true
+  restore-on-chunk-unload: true
+  allowed-replace: [AIR, CAVE_AIR, VOID_AIR, WEB, COBWEB]
+particles:
+  enabled: true
+  viewer-radius: 64
+  fallback-enabled: true
+  cache-reflection: true
+compatibility:
+  prefer-modern-item-data: true
+  legacy-name-match: true
+  legacy-custom-model-data-match: true
+  legacy-lore-match: true
+  allow-material-fallbacks: true
+legacy-aliases:
+  # Map extra recovered old item names into weapon definitions through per-weapon legacy.names-contains.
+  # These global reminders are not active by themselves. They document live-audit names mentioned by the product owner.
+  names-contains: ['Dash Trident', 'Rocket Mace', 'Venom Mace']
+  custom-model-data: []
+  lore-contains: []
+commands:
+  register-dynamic-commands: true
+  intercept-unknown-menu-commands: true
+  update-tab-completion: true

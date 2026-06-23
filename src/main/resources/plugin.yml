@@ -1,0 +1,50 @@
+name: ${project.name}
+version: ${project.version}
+main: ${plugin.main}
+author: ${plugin.author}
+description: ${project.description}
+api-version: 1.13
+folia-supported: true
+commands:
+  smpweapons:
+    description: Manage SMP Weapons.
+    aliases: [smpweapon, weapons]
+    permission: smpweapons.use
+permissions:
+  smpweapons.use:
+    default: op
+  smpweapons.admin:
+    default: op
+  smpweapons.menu:
+    default: op
+  smpweapons.menu.admin:
+    default: op
+  smpweapons.menu.ffa:
+    default: op
+  smpweapons.list:
+    default: op
+  smpweapons.get:
+    default: op
+  smpweapons.give:
+    default: op
+  smpweapons.create:
+    default: op
+  smpweapons.delete:
+    default: op
+  smpweapons.cooldown:
+    default: op
+  smpweapons.reload:
+    default: op
+  smpweapons.debug:
+    default: op
+  smpweapons.bypasscooldown.*:
+    default: false
+  smpweapons.command.ffaweapons:
+    default: op
+
+  smpweapons.weapon.*.use:
+    default: op
+  smpweapons.weapon.*.get:
+    default: op
+  smpweapons.weapon.*.give:
+    default: op

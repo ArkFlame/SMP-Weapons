@@ -1,0 +1,271 @@
+weapons:
+  dash_sword:
+    enabled: true
+    display-id: 'ᴅᴀꜱʜ ꜱᴡᴏʀᴅ'
+    item:
+      material: [NETHERITE_SWORD, DIAMOND_SWORD]
+      name: '<bold><gradient:#D2DBF1:#75777A>ᴅᴀꜱʜ ꜱᴡᴏʀᴅ</gradient></bold>'
+      lore:
+        - ''
+        - '<white>sᴡᴏʀᴅ ᴅᴀsʜ'
+        - '<dark_gray>⌚ 30s <gray>▹ sʜɪғᴛ + ʀɪɢʜᴛ ᴄʟɪᴄᴋ'
+        - '<gray>Dash forward in the direction you''re looking,'
+        - '<gray>leaving a trail of wind particles behind you'
+        - '<gray>and knocking entities away while in air.'
+      custom-model-data: 23425
+      enchants: ['DAMAGE_ALL:5', 'FIRE_ASPECT:2', 'DURABILITY:3', 'MENDING:1']
+    legacy:
+      custom-model-data: 23425
+      names-contains: ['ᴅᴀꜱʜ ꜱᴡᴏʀᴅ', 'Dash Sword']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 30
+    ability:
+      type: DASH_AOE
+      upward: 0.5
+      forward: 2.5
+      burst-radius: 3.0
+      trail-radius: 2.0
+      push-speed: 1.0
+      damage: 2.0
+      trail-particle: WHITE_DUST
+      burst-sounds: ['ENTITY_PLAYER_ATTACK_SWEEP', 'ENTITY_WIND_CHARGE_WIND_BURST']
+
+  dash_mace:
+    enabled: true
+    display-id: 'ᴅᴀꜱʜ ᴍᴀᴄᴇ'
+    item:
+      material: [MACE, NETHERITE_AXE, DIAMOND_AXE]
+      name: '<bold><gradient:#3A3A3A:#BDBDBD>ᴅᴀꜱʜ ᴍᴀᴄᴇ</gradient></bold>'
+      lore:
+        - ''
+        - '<white>ᴅᴀsʜ'
+        - '<dark_gray>⌚ 25s <gray>▹ sʜɪғᴛ + ʀɪɢʜᴛ ᴄʟɪᴄᴋ'
+        - '<gray>Dash forward with immense force, decelerating quickly'
+        - '<gray>and knocking entities away while in air.'
+      custom-model-data: 23426
+      enchants: ['DURABILITY:3', 'MENDING:1', 'DENSITY:5', 'WIND_BURST:2']
+    legacy:
+      custom-model-data: 23426
+      names-contains: ['ᴅᴀꜱʜ ᴍᴀᴄᴇ', 'Dash Mace']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 25
+    ability:
+      type: DASH_AOE
+      upward: 0.7
+      forward: 2.2
+      burst-radius: 3.0
+      trail-radius: 2.0
+      push-speed: 1.0
+      damage: 4.0
+      trail-particle: WHITE_DUST
+      burst-sounds: ['ITEM_MACE_SMASH_AIR', 'ENTITY_BREEZE_WIND_BURST']
+
+  wind_spear:
+    enabled: true
+    display-id: 'ᴡɪɴᴅ ꜱᴘᴇᴀʀ'
+    item:
+      material: [NETHERITE_SPEAR, TRIDENT, NETHERITE_SWORD, DIAMOND_SWORD]
+      name: '<bold><gradient:#464f56:#d1d3d5>ᴡɪɴᴅ ꜱᴘᴇᴀʀ</gradient></bold>'
+      lore:
+        - ''
+        - '<white>ʟᴜɴɢᴇ'
+        - '<dark_gray>⌚ 30s <gray>▹ sʜɪғᴛ + ʀɪɢʜᴛ ᴄʟɪᴄᴋ'
+        - '<gray>Dash forward with air particles surrounding you'
+        - '<gray>and knocking entities away while in air.'
+      custom-model-data: 23427
+      enchants: ['DURABILITY:3', 'MENDING:1']
+    legacy:
+      custom-model-data: 23427
+      names-contains: ['ᴡɪɴᴅ ꜱᴘᴇᴀʀ', 'Wind Spear']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 30
+    ability:
+      type: DASH_AOE
+      upward: 0.5
+      forward: 1.7
+      burst-radius: 3.0
+      trail-radius: 2.0
+      push-speed: 1.5
+      damage: 2.0
+      spiral: true
+      trail-particle: WHITE_DUST
+      burst-sounds: ['ITEM_SPEAR_LUNGE_3', 'ENTITY_WIND_CHARGE_WIND_BURST']
+
+  venom_sword:
+    enabled: true
+    display-id: 'ᴠᴇɴᴏᴍ ꜱᴡᴏʀᴅ'
+    item:
+      material: [NETHERITE_SWORD, DIAMOND_SWORD]
+      name: '<bold><gradient:#151515:#00AA00>ᴠᴇɴᴏᴍ ꜱᴡᴏʀᴅ</gradient></bold>'
+      lore:
+        - ''
+        - '<white>Passive <gray>| 10%% chance to inflict <gray>slowness I <gray>for 3s on hit.'
+        - ''
+        - '<dark_green>ᴠᴇɴᴏᴍ ᴅᴀsʜ'
+        - '<dark_gray>⌚ 35s <dark_green>▹ sʜɪғᴛ + ʀɪɢʜᴛ ᴄʟɪᴄᴋ'
+        - '<gray>Dash forward, poisoning all entities in your path.'
+        - '<gray>Grants Poison I & Weakness I to victims for 5s.'
+      custom-model-data: 23428
+      enchants: ['DAMAGE_ALL:5', 'FIRE_ASPECT:2', 'DURABILITY:3', 'MENDING:1']
+    legacy:
+      custom-model-data: 23428
+      names-contains: ['ᴠᴇɴᴏᴍ ꜱᴡᴏʀᴅ', 'Venom Sword']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 35
+    ability:
+      type: VENOM_DASH
+      upward: 0.5
+      forward: 2.2
+      radius: 5.0
+      poison-amplifier: 1
+      weakness-amplifier: 1
+      duration: 5
+    passive:
+      type: HIT_EFFECT
+      chance: 10.0
+      effects:
+        - 'SLOW:1:3'
+
+  cobweb_axe:
+    enabled: true
+    display-id: 'ᴄᴏʙᴡᴇʙ ᴀxᴇ'
+    item:
+      material: [NETHERITE_AXE, DIAMOND_AXE]
+      name: '<bold><gradient:#FFFFFF:#BEBEBE>ᴄᴏʙᴡᴇʙ ᴀxᴇ</gradient></bold>'
+      lore:
+        - ''
+        - '<white>Passive <gray>| 20%% chance to place temporary cobweb on hit.'
+        - ''
+        - '<gray>ᴡᴇʙ ᴄʟᴇᴀʀᴇʀ'
+        - '<dark_gray>⌚ 30s <white>▹ ᴏꜰꜰʜᴀɴᴅ'
+        - '<gray>Clear all cobwebs in a 4 block radius'
+        - '<gray>where you''re looking with white particles.'
+      custom-model-data: 23429
+      enchants: ['DURABILITY:3', 'MENDING:1', 'DAMAGE_ALL:5']
+    legacy:
+      custom-model-data: 23429
+      names-contains: ['ᴄᴏʙᴡᴇʙ ᴀxᴇ', 'Cobweb Axe']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 30
+    ability:
+      type: COBWEB_PROJECTILE
+      block: COBWEB
+      block-mode: fake
+      center-ttl-ticks: 35
+      wave-radius: 5
+      wave-ttl-ticks: 35
+      wave-step-ticks: 2
+      collapse-delay-ticks: 6
+      real-radius: 0
+      hit-effects:
+        - 'SLOW:10:1'
+      impact-sound: ENTITY_SPIDER_DEATH
+      impact-particles: 20
+      projectile:
+        type: SNOWBALL
+        speed: 1.35
+        upward: 0.10
+        lifetime-ticks: 100
+        trail-particle: WHITE_DUST
+    passive:
+      type: COBWEB_ON_HIT
+      chance: 20.0
+      duration: 5
+
+  viking_spear:
+    enabled: true
+    display-id: 'ᴠɪᴋɪɴɢ ꜱᴘᴇᴀʀ'
+    item:
+      material: [NETHERITE_SPEAR, TRIDENT, NETHERITE_SWORD, DIAMOND_SWORD]
+      name: '<bold><gradient:#4F0F0F:#DE4242>ᴠɪᴋɪɴɢ ꜱᴘᴇᴀʀ</gradient></bold>'
+      lore:
+        - ''
+        - '<red>ʙᴇʀsᴇʀᴋᴇʀ ʀᴀɢᴇ'
+        - '<dark_gray>⌚ 35s <red>▹ sʜɪғᴛ + ʀɪɢʜᴛ ᴄʟɪᴄᴋ'
+        - '<gray>Enter a raging state for 6 seconds,'
+        - '<gray>gaining <white>Speed III<gray>, <white>Strength III<gray>, & <white>Saturation'
+        - '<gray>while your body glows.'
+      custom-model-data: 23430
+      enchants: ['DURABILITY:3', 'MENDING:1']
+    legacy:
+      custom-model-data: 23430
+      names-contains: ['ᴠɪᴋɪɴɢ ꜱᴘᴇᴀʀ', 'Viking Spear']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 35
+    ability:
+      type: SELF_BUFF
+      duration: 6
+      glowing: true
+      sounds: ['ENTITY_ENDER_DRAGON_GROWL', 'ENTITY_WARDEN_ROAR']
+      effects:
+        - 'SPEED:3:6'
+        - 'INCREASE_DAMAGE:3:6'
+        - 'SATURATION:255:6'
+      particle: RED_DUST
+
+  gravity_axe:
+    enabled: true
+    display-id: 'ɢʀᴀᴠɪᴛʏ ᴀxᴇ'
+    item:
+      material: [NETHERITE_AXE, DIAMOND_AXE]
+      name: '<bold><gradient:#3E0F99:#FF49B8>ɢʀᴀᴠɪᴛʏ ᴀxᴇ</gradient></bold>'
+      lore:
+        - ''
+        - '<dark_purple>ᴀɴᴛɪ-ɢʀᴀᴠɪᴛʏ'
+        - '<dark_gray>⌚ 35s <dark_purple>▹ sʜɪғᴛ + ʀɪɢʜᴛ ᴄʟɪᴄᴋ'
+        - '<gray>All nearby entities are lifted into the air,'
+        - '<gray>gaining <white>Levitation V<gray> for 3s and <white>Blindness<gray> for 5s.'
+        - '<gray>Radius: <white>6 blocks'
+      custom-model-data: 23431
+      enchants: ['DURABILITY:3', 'MENDING:1', 'DAMAGE_ALL:5']
+    legacy:
+      custom-model-data: 23431
+      names-contains: ['ɢʀᴀᴠɪᴛʏ ᴀxᴇ', 'Gravity Axe']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 35
+    ability:
+      type: GRAVITY_LIFT
+      radius: 6.0
+      duration: 3
+      effects:
+        - 'LEVITATION:5:3'
+        - 'BLINDNESS:1:3'
+      particle: PURPLE_DUST
+
+  rocket_spear:
+    enabled: true
+    display-id: 'ʀᴏᴄᴋᴇᴛ ꜱᴘᴇᴀʀ'
+    item:
+      material: [NETHERITE_SPEAR, TRIDENT, NETHERITE_SWORD, DIAMOND_SWORD]
+      name: '<bold><gradient:#FFFFFF:#FFAA00:#C80A37>ʀᴏᴄᴋᴇᴛ ꜱᴘᴇᴀʀ</gradient></bold>'
+      lore:
+        - ''
+        - '<gold>ʀᴏᴄᴋᴇᴛ ʟɪғᴛ'
+        - '<dark_gray>⌚ 35s <gold>▹ sʜɪғᴛ + ʀɪɢʜᴛ ᴄʟɪᴄᴋ'
+        - '<gray>Launch yourself into the air <white>25 blocks <gray>high,'
+        - '<gray>gaining elytra-like gliding.'
+        - '<gray>with a particle trail following you.'
+      custom-model-data: 23432
+      enchants: ['DURABILITY:3', 'MENDING:1']
+    legacy:
+      custom-model-data: 23432
+      names-contains: ['ʀᴏᴄᴋᴇᴛ ꜱᴘᴇᴀʀ', 'Rocket Spear']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 35
+    ability:
+      type: ROCKET_LIFT
+      upward: 2.0
+      forward: 1.0
+      duration: 3
+      particle: YELLOW_DUST
+      gliding-at-peak: true
+      glide-sustain-ticks: 100
+      glide-start-velocity-y: 0.05

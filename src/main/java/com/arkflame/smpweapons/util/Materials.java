@@ -1,0 +1,107 @@
+package com.arkflame.smpweapons.util;
+
+import org.bukkit.Material;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
+public final class Materials {
+    private Materials() {
+    }
+
+    public static Optional<Material> find(final Iterable<String> aliases) {
+        if (aliases == null) {
+            return Optional.empty();
+        }
+        for (final String alias : aliases) {
+            final Optional<Material> material = find(alias);
+            if (material.isPresent()) {
+                return material;
+            }
+        }
+        return Optional.empty();
+    }
+
+    public static Optional<Material> find(final String alias) {
+        if (alias == null || alias.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        final String normalized = alias.trim().toUpperCase(Locale.ROOT).replace(' ', '_').replace('-', '_');
+        final Material direct = Material.getMaterial(normalized);
+        if (direct != null) {
+            return Optional.of(direct);
+        }
+        final String legacy = legacyAlias(normalized);
+        if (!legacy.equals(normalized)) {
+            final Material legacyMaterial = Material.getMaterial(legacy);
+            if (legacyMaterial != null) {
+                return Optional.of(legacyMaterial);
+            }
+        }
+        return Optional.empty();
+    }
+
+    public static Material fallback(final Material fallback, final Iterable<String> aliases) {
+        return find(aliases).orElse(fallback);
+    }
+
+    public static List<String> list(final Object raw) {
+        if (raw instanceof List) {
+            final List<?> list = (List<?>) raw;
+            final List<String> output = new ArrayList<String>(list.size());
+            for (final Object value : list) {
+                output.add(String.valueOf(value));
+            }
+            return output;
+        }
+        if (raw == null) {
+            return Collections.emptyList();
+        }
+        return Collections.singletonList(String.valueOf(raw));
+    }
+
+    public static boolean isCobweb(final Material material) {
+        if (material == null) {
+            return false;
+        }
+        return material.name().equals("WEB") || material.name().equals("COBWEB");
+    }
+
+    public static boolean isAir(final Material material) {
+        if (material == null) {
+            return true;
+        }
+        return material == Material.AIR || material.name().endsWith("_AIR");
+    }
+
+    private static String legacyAlias(final String normalized) {
+        if ("COBWEB".equals(normalized)) {
+            return "WEB";
+        }
+        if ("GRAY_STAINED_GLASS_PANE".equals(normalized) || "GREY_STAINED_GLASS_PANE".equals(normalized)) {
+            return "STAINED_GLASS_PANE";
+        }
+        if ("GRAY_STAINED_GLASS".equals(normalized) || "GREY_STAINED_GLASS".equals(normalized)) {
+            return "STAINED_GLASS";
+        }
+        if ("NETHERITE_SWORD".equals(normalized)) {
+            return "DIAMOND_SWORD";
+        }
+        if ("NETHERITE_AXE".equals(normalized)) {
+            return "DIAMOND_AXE";
+        }
+        if ("MACE".equals(normalized)) {
+            return "DIAMOND_AXE";
+        }
+        if ("NETHERITE_SPEAR".equals(normalized)) {
+            return "TRIDENT";
+        }
+        if ("TRIDENT".equals(normalized)) {
+            return "DIAMOND_SWORD";
+        }
+        return normalized;
+    }
+}

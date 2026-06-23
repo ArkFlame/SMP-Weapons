@@ -1,0 +1,219 @@
+# Disabled examples for server owners. Copy into custom-weapons.yml and set enabled: true.
+weapons:
+  example_cobweb_bomb_axe:
+    enabled: false
+    display-id: 'example cobweb bomb axe'
+    item:
+      material: [NETHERITE_AXE, DIAMOND_AXE]
+      name: '<white><bold>Example Cobweb Bomb Axe</bold></white>'
+      lore:
+        - ''
+        - '<white>Web Bomb'
+        - '<dark_gray>⌚ 30s <gray>▹ sneak + right click'
+        - '<gray>Throws a web charge that blooms and collapses.'
+      custom-model-data: 24501
+      enchants: ['DURABILITY:3']
+    legacy:
+      custom-model-data: 24501
+      names-contains: ['Example Cobweb Bomb Axe']
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 30
+    ability:
+      type: COBWEB_PROJECTILE
+      block: COBWEB
+      block-mode: hybrid
+      center-ttl-ticks: 35
+      wave-radius: 5
+      wave-ttl-ticks: 35
+      wave-step-ticks: 2
+      collapse-delay-ticks: 6
+      real-radius: 1
+      hit-effects:
+        - 'SLOW:10:1'
+      projectile:
+        type: SNOWBALL
+        speed: 1.35
+        upward: 0.10
+        lifetime-ticks: 100
+        trail-particle: WHITE_DUST
+
+  example_timeline_spear:
+    enabled: false
+    display-id: 'example timeline spear'
+    item:
+      material: [NETHERITE_SPEAR, TRIDENT, DIAMOND_SWORD]
+      name: '<aqua><bold>Example Timeline Spear</bold></aqua>'
+      lore:
+        - '<gray>Minimal action timeline example.'
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 20
+    ability:
+      type: TIMELINE
+      timeline:
+        0:
+          - 'SOUND:ENTITY_PLAYER_ATTACK_SWEEP'
+          - 'VELOCITY_Y:0.4'
+        1:
+          - 'VELOCITY_LOOK:2.0'
+        5:
+          - 'PARTICLE:WHITE_DUST:12'
+
+  example_map_dsl_sword:
+    enabled: false
+    display-id: 'example map dsl sword'
+    item:
+      material: [NETHERITE_SWORD, DIAMOND_SWORD]
+      name: '<gold><bold>Example Map DSL Sword</bold></gold>'
+      lore:
+        - '<gray>Shows the 1.0.3 map-style timeline syntax.'
+    trigger:
+      type: SNEAK_RIGHT_CLICK
+      cooldown: 15
+    ability:
+      type: TIMELINE
+      timeline:
+        0:
+          - sound: { target: caster, name: ENTITY_PLAYER_ATTACK_SWEEP, volume: 1.0, pitch: 1.0 }
+          - velocity: { target: caster, mode: LOOK, forward: 1.5, upward: 0.35 }
+          - fall_protection: { target: caster, enabled: true }
+        2:
+          - particle: { origin: caster, effect: WHITE_DUST, count: 20 }
+        8:
+          - temporary_block: { origin: target_block, mode: fake, block: COBWEB, ttl-ticks: 40 }
+        '10..30 step 5':
+          - damage: { selector: { type: nearby_living, radius: 3, include-caster: false }, amount: 2.0, mode: RAW_HEALTH }
+          - particle_shape: { origin: caster, effect: WHITE_DUST, shape: { type: HELIX, radius: 1.0, height: 1.8, strands: 2, rotations: 1, points: 20 } }
+        35:
+          - actionbar: { text: '<green>Example ready.' }
+          - shape_block_wave:
+              origin: target_block
+              mode: hybrid
+              block: COBWEB
+              ttl-ticks: 40
+              shape: { type: SPHERE, radius-to: 3, fill: HOLLOW }
+              expand: { every-ticks: 2 }
+              collapse: { delay-after-expand-ticks: 4 }
+              collision: { real-radius: 1 }
+
+
+  example_v2_trigger_projectile:
+    enabled: false
+    display-id: 'example v2 trigger projectile'
+    item:
+      material: [NETHERITE_AXE, DIAMOND_AXE]
+      name: '<white><bold>Example V2 Projectile Axe</bold></white>'
+      lore:
+        - '<gray>Shows triggers/cooldowns/timelines/projectiles syntax.'
+      custom-model-data: 24502
+    legacy:
+      custom-model-data: 24502
+      names-contains: ['Example V2 Projectile Axe']
+    cooldowns:
+      primary:
+        seconds: 30
+    triggers:
+      primary:
+        events: [RIGHT_CLICK]
+        conditions: [SNEAKING, MAIN_HAND]
+        cooldown: primary
+        timeline: cast
+    ability:
+      type: TIMELINE
+      projectiles:
+        cobweb_bomb:
+          type: SNOWBALL
+          origin: EYE
+          speed: 1.35
+          upward: 0.10
+          lifetime-ticks: 100
+          trail-particle: WHITE_DUST
+      timelines:
+        cast:
+          0:
+            - sound: { target: caster, name: ENTITY_SPIDER_STEP }
+            - spawn_projectile: { id: cobweb_bomb }
+        support_actions:
+          0:
+            - damage_once: { memory: cast_hits, selector: { type: nearby_living, radius: 3, include-caster: false, sort: nearest, max-targets: 3 }, amount: 2.0, mode: RAW_HEALTH }
+            - sync_block: { origin: target_block }
+            - restore_block: { origin: target_block }
+            - cooldown_reset: {}
+
+  example_107_context_weapon:
+    enabled: false
+    display-id: 'example 1.0.7 context weapon'
+    item:
+      material: [NETHERITE_AXE, DIAMOND_AXE]
+      name: '<white><bold>Example 1.0.7 Context Axe</bold></white>'
+      lore:
+        - '<gray>Shows top-level projectiles, on_hit timelines, and hit passives.'
+      custom-model-data: 24505
+    legacy:
+      custom-model-data: 24505
+      names-contains: ['Example 1.0.7 Context Axe']
+    cooldowns:
+      primary: { seconds: 30 }
+      alternate: { seconds: 10 }
+    triggers:
+      primary:
+        events: [RIGHT_CLICK]
+        conditions: [SNEAKING, MAIN_HAND]
+        cooldown: primary
+        timeline: cast_projectile
+      quick_left:
+        events: [LEFT_CLICK]
+        conditions: [SNEAKING, MAIN_HAND]
+        cooldown: alternate
+        timeline: quick_burst
+    projectiles:
+      web_charge:
+        type: SNOWBALL
+        origin: EYE
+        speed: 1.35
+        upward: 0.10
+        lifetime-ticks: 100
+        trail-particle: WHITE_DUST
+        remove-on-hit: true
+        on_tick:
+          every: 2
+          timeline: projectile_tick
+        on_hit:
+          timeline: projectile_hit
+        on_expire:
+          timeline: projectile_expire
+    passives:
+      web_hit:
+        events: [DAMAGE_DEALT]
+        conditions: [FULL_ATTACK_COOLDOWN]
+        chance: 20.0
+        timeline: passive_hit
+    timelines:
+      cast_projectile:
+        0:
+          - sound: { target: caster, name: ENTITY_SPIDER_STEP }
+          - spawn_projectile: { id: web_charge }
+      projectile_tick:
+        0:
+          - particle_shape: { origin: projectile, effect: WHITE_DUST, shape: { type: SPHERE, radius: 0.6, points: 12 } }
+      projectile_hit:
+        0:
+          - sound: { target: impact_location, name: ENTITY_SPIDER_DEATH }
+          - potion: { target: hit_entity, effect: 'SLOW:1:1' }
+          - temporary_block:
+              origin: impact_location
+              mode: hybrid
+              block: COBWEB
+              ttl-ticks: 40
+              shape: { type: SPHERE, radius: 2, fill: HOLLOW }
+      projectile_expire:
+        0:
+          - particle: { origin: projectile, effect: CLOUD, count: 12 }
+      passive_hit:
+        0:
+          - temporary_block: { origin: victim, mode: real, block: COBWEB, ttl-ticks: 100 }
+      quick_burst:
+        0:
+          - damage_once: { selector: { type: nearby_living, radius: 3, include-caster: false, sort: nearest, max-targets: 3 }, amount: 2.0, mode: RAW_HEALTH }
+          - particle_shape: { origin: caster, effect: WHITE_DUST, shape: { type: DISC, radius: 3, points: 48 } }

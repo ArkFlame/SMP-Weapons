@@ -1,0 +1,47 @@
+menus:
+  admin:
+    enabled: true
+    title: '<dark_gray>SMP Weapons'
+    size: 54
+    permission: smpweapons.menu.admin
+    register-command: false
+    open-commands: []
+    fill:
+      enabled: true
+      material: [GRAY_STAINED_GLASS_PANE, STAINED_GLASS_PANE, STAINED_GLASS]
+      name: '<white>'
+    weapons: all
+    weapon-slots: [10,11,12,13,14,15,16,19,20,21,22,23,24,25,28,29,30,31,32,33,34,37,38,39,40,41,42,43]
+    click-actions:
+      - GET
+    pagination:
+      enabled: true
+      previous-slot: 45
+      next-slot: 53
+      previous-name: "<yellow>← Previous"
+      next-name: "<yellow>Next →"
+  ffa:
+    enabled: true
+    title: '<dark_gray>ʟᴇɢᴇɴᴅᴀʀɪᴇs'
+    size: 36
+    permission: smpweapons.menu.ffa
+    command-permission: smpweapons.command.ffaweapons
+    register-command: true
+    open-commands:
+      - ffaweapons
+    fill:
+      enabled: true
+      material: [GRAY_STAINED_GLASS_PANE, STAINED_GLASS_PANE, STAINED_GLASS]
+      name: '<white>'
+    weapons:
+      - dash_sword
+      - dash_mace
+      - wind_spear
+      - venom_sword
+      - cobweb_axe
+      - viking_spear
+      - gravity_axe
+      - rocket_spear
+    weapon-slots: [10,12,14,16,19,21,23,25]
+    click-actions:
+      - GET
