@@ -11,7 +11,7 @@ mvn clean package
 The compiled plugin jar is created at:
 
 ```text
-target/SMPWeapons-1.0.7.jar
+target/SMPWeapons-1.0.8.jar
 ```
 
 ## Server install
@@ -86,3 +86,9 @@ SMP Weapons 1.0.4 adds the next original-spec completion pass: YAML v2 trigger m
 SMP Weapons 1.0.7 fixes the final Rocket Spear glide gap and tightens enabled-weapon surfaces. Rocket Spear now starts a forced glide session at the detected lift peak/fall transition, repeatedly sustains the server gliding state, and cancels glide-off toggles while the weapon glide session is active on servers that expose `EntityToggleGlideEvent`. This keeps the no-Elytra glide behavior closer to the original Skript visual feel.
 
 Example weapons remain `enabled: false`, and enabled-only filtering is now enforced at registry/list/menu/dynamic-command surfaces so examples do not appear or register getter commands by default. The original Skript weapon names now use small-capital display IDs and item names consistently across the default and FFA2 weapon packs, while normal legacy names remain as matching aliases where needed.
+
+
+## 1.0.8 Notes
+
+- Cooldown bypass permissions are disabled by default through `settings.cooldown-bypass-enabled: false`.
+- Cobweb Axe supports `replace_blocks` to remove real cobwebs after the packet-side sphere finishes expanding, while immediately resyncing tracked fake cobwebs.

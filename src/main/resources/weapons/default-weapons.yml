@@ -166,6 +166,15 @@ weapons:
         - 'SLOW:10:1'
       impact-sound: ENTITY_SPIDER_DEATH
       impact-particles: 20
+      replace_blocks:
+        enabled: true
+        shape: sphere
+        radius: 5
+        delay: 35
+        targets:
+          - WEB
+          - COBWEB
+        material: AIR
       projectile:
         type: SNOWBALL
         speed: 1.35

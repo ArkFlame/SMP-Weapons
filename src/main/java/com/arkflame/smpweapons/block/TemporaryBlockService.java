@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class TemporaryBlockService {
     private final JavaPlugin plugin;
@@ -162,19 +164,35 @@ public final class TemporaryBlockService {
     }
 
     public void clearCobwebs(final Location center, final int radius) {
-        if (center == null || center.getWorld() == null) {
+        replaceBlocks(center, "sphere", Math.max(1, radius), 0L, java.util.Arrays.asList("WEB", "COBWEB"), Material.AIR);
+    }
+
+    public void replaceBlocks(final Location center, final String shapeType, final int radius, final long delayTicks, final List<String> targetAliases, final Material replacement) {
+        if (center == null || center.getWorld() == null || replacement == null) {
             return;
         }
-        final List<BlockOffset> offsets = this.shapes.sphere(Math.max(1, radius), false);
-        processOffsets(center, offsets, new OffsetConsumer() {
+        final Set<Material> targets = resolveTargets(targetAliases);
+        if (targets.isEmpty()) {
+            return;
+        }
+        final int safeRadius = Math.max(1, radius);
+        final List<BlockOffset> offsets = shapeOffsets(shapeType, safeRadius, safeRadius * 2 + 1, false);
+        this.scheduler.runRegionLater(center, new Runnable() {
             @Override
-            public void accept(final Location location) {
-                final Block block = location.getBlock();
-                if (Materials.isCobweb(block.getType())) {
-                    block.setType(Material.AIR);
-                }
+            public void run() {
+                processOffsets(center, offsets, new OffsetConsumer() {
+                    @Override
+                    public void accept(final Location location) {
+                        final Block block = location.getBlock();
+                        if (!targets.contains(block.getType())) {
+                            return;
+                        }
+                        block.setType(replacement);
+                        resyncTrackedOrRealNearby(block.getLocation());
+                    }
+                });
             }
-        });
+        }, Math.max(0L, delayTicks));
     }
 
     public void syncBlock(final Player player, final Location location) {
@@ -327,6 +345,18 @@ public final class TemporaryBlockService {
         }
     }
 
+    private void resyncTrackedOrRealNearby(final Location location) {
+        if (location == null) {
+            return;
+        }
+        final CreatedBlock created = top(BlockKey.from(location));
+        if (created == null) {
+            sendRealNearby(location);
+            return;
+        }
+        sendNearbyTop(created);
+    }
+
     private Collection<Player> nearbyPlayers(final Location location, final double radius) {
         final List<Player> players = new ArrayList<Player>();
         if (location == null || location.getWorld() == null) {
@@ -342,6 +372,34 @@ public final class TemporaryBlockService {
             }
         }
         return players;
+    }
+
+    private Set<Material> resolveTargets(final List<String> aliases) {
+        final Set<Material> targets = new HashSet<Material>();
+        if (aliases == null || aliases.isEmpty()) {
+            return targets;
+        }
+        for (final String alias : aliases) {
+            if (alias == null) {
+                continue;
+            }
+            final String normalized = alias.trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
+            if (normalized.isEmpty()) {
+                continue;
+            }
+            Materials.find(normalized).ifPresent(targets::add);
+            if ("WEB".equals(normalized) || "COBWEB".equals(normalized)) {
+                final Material web = Material.getMaterial("WEB");
+                final Material cobweb = Material.getMaterial("COBWEB");
+                if (web != null) {
+                    targets.add(web);
+                }
+                if (cobweb != null) {
+                    targets.add(cobweb);
+                }
+            }
+        }
+        return targets;
     }
 
     private synchronized long nextId() {

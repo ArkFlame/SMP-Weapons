@@ -51,7 +51,8 @@ public final class WeaponListener implements Listener {
             return;
         }
         event.setCancelled(true);
-        final boolean bypass = player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*");
+        final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
+                && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
         if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
             final Map<String, String> placeholders = new HashMap<String, String>();
             placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));

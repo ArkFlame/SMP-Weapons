@@ -12,6 +12,7 @@ settings:
   ready-notification: true
   reset-cooldowns-on-quit: true
   require-use-permission: false
+  cooldown-bypass-enabled: false
 sounds:
   enabled: true
   deny: BLOCK_NOTE_BLOCK_BASS

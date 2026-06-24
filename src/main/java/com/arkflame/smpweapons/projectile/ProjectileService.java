@@ -323,6 +323,29 @@ public final class ProjectileService {
         final String mode = getString(section, "block-mode", "fake");
         this.temporaryBlocks.placeTemporary(impact, cobweb, centerTtl, mode);
         this.temporaryBlocks.waveSphere(impact, cobweb, radius, ttl, mode, realRadius, step, collapseDelay);
+        replaceRealBlocksAfterImpact(impact, section);
+    }
+
+    private void replaceRealBlocksAfterImpact(final Location impact, final ConfigurationSection section) {
+        if (impact == null || section == null) {
+            return;
+        }
+        ConfigurationSection replace = section.getConfigurationSection("replace_blocks");
+        if (replace == null) {
+            replace = section.getConfigurationSection("replace-blocks");
+        }
+        if (replace == null || !replace.getBoolean("enabled", false)) {
+            return;
+        }
+        final String shape = replace.getString("shape", "sphere");
+        final int radius = replace.getInt("radius", 5);
+        final long delay = replace.getLong("delay", replace.getLong("delay-ticks", 35L));
+        java.util.List<String> targets = replace.getStringList("targets");
+        if (targets == null || targets.isEmpty()) {
+            targets = java.util.Arrays.asList("WEB", "COBWEB");
+        }
+        final Material replacement = Materials.find(replace.getString("material", "AIR")).orElse(Material.AIR);
+        this.temporaryBlocks.replaceBlocks(impact, shape, radius, delay, targets, replacement);
     }
 
     private static double getDouble(final ConfigurationSection section, final String path, final double fallback) {
