@@ -170,7 +170,7 @@ weapons:
         enabled: true
         shape: sphere
         radius: 5
-        delay: 35
+        delay: 20
         targets:
           - WEB
           - COBWEB
