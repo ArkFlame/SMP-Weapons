@@ -53,6 +53,30 @@ public final class PotionEffects {
         if ("STRENGTH".equals(normalized)) {
             return new String[]{"INCREASE_DAMAGE", normalized};
         }
+        if ("RESISTANCE".equals(normalized) || "DAMAGE_RESISTANCE".equals(normalized)) {
+            return new String[]{"DAMAGE_RESISTANCE", normalized};
+        }
+        if ("DARKNESS".equals(normalized)) {
+            return new String[]{"DARKNESS", "BLINDNESS"};
+        }
+        if ("CONDUIT_POWER".equals(normalized)) {
+            return new String[]{"CONDUIT_POWER", "WATER_BREATHING"};
+        }
+        if ("HARMING".equals(normalized) || "INSTANT_DAMAGE".equals(normalized) || "HARM".equals(normalized)) {
+            return new String[]{"HARM", normalized};
+        }
+        if ("REGENERATION".equals(normalized)) {
+            return new String[]{"REGENERATION"};
+        }
+        if ("FIRE_RESISTANCE".equals(normalized)) {
+            return new String[]{"FIRE_RESISTANCE"};
+        }
+        if ("ABSORPTION".equals(normalized)) {
+            return new String[]{"ABSORPTION"};
+        }
+        if ("INCREASE_DAMAGE".equals(normalized)) {
+            return new String[]{"INCREASE_DAMAGE"};
+        }
         if ("SLOWNESS".equals(normalized)) {
             return new String[]{"SLOW", normalized};
         }

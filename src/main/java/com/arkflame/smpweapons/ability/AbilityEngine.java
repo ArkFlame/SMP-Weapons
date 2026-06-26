@@ -88,9 +88,34 @@ public final class AbilityEngine {
             flowSpear(player, section);
         } else if ("COBWEB_PROJECTILE".equals(type)) {
             cobwebProjectile(player, weapon, section);
+        } else if ("FORCE_BOW_DASH".equals(type)) {
+            forceBowDash(player, section, 1.0D);
         } else if ("TIMELINE".equals(type)) {
             timeline(player, weapon, section);
         }
+    }
+
+    public void executeShoot(final Player player, final WeaponDefinition weapon, final double force, final Entity projectile) {
+        if (player == null || weapon == null) {
+            return;
+        }
+        final String type = weapon.getAbilityType() == null ? "NONE" : weapon.getAbilityType().toUpperCase(Locale.ROOT);
+        final ConfigurationSection section = weapon.getAbilitySection();
+        if ("FORCE_BOW_DASH".equals(type)) {
+            forceBowDash(player, section, force);
+            return;
+        }
+        if ("TIMELINE".equals(type)) {
+            if (section != null && section.isString("timeline")) {
+                timeline(player, weapon, section.getString("timeline", "").trim(), new AbilityContext(null, null, projectile));
+                return;
+            }
+            if (section != null && section.isConfigurationSection("timeline")) {
+                runTimelineSection(player, weapon, section, section.getConfigurationSection("timeline"), new AbilityContext(null, null, projectile));
+                return;
+            }
+        }
+        execute(player, weapon);
     }
 
     public void executePassive(final Player attacker, final LivingEntity victim, final WeaponDefinition weapon) {
@@ -410,6 +435,47 @@ public final class AbilityEngine {
         Entities.pushForward(player, getDouble(section, "forward", 4.0D));
     }
 
+    private void forceBowDash(final Player player, final ConfigurationSection section, final double force) {
+        final double minForward = getDouble(section, "min-forward", 1.2D);
+        final double maxForward = getDouble(section, "max-forward", 4.2D);
+        final double upward = getDouble(section, "upward", 0.35D);
+        final int fallProtectionTicks = getInt(section, "fall-protection-ticks", 80);
+        final String trailParticle = getString(section, "trail-particle", "CLOUD");
+        final int trailTicks = getInt(section, "trail-ticks", 8);
+        final double clamped = Math.max(0.0D, Math.min(1.0D, force));
+        final double forward = minForward + ((maxForward - minForward) * clamped);
+        final Vector direction = player.getEyeLocation().getDirection().clone().setY(0.0D);
+        if (direction.lengthSquared() > 0.000001D) {
+            direction.normalize().multiply(forward).setY(upward);
+            player.setVelocity(player.getVelocity().add(direction));
+        } else if (Math.abs(upward) > 0.000001D) {
+            player.setVelocity(player.getVelocity().add(new Vector(0.0D, upward, 0.0D)));
+        }
+        if (fallProtectionTicks > 0) {
+            this.fallProtection.protect(player.getUniqueId());
+            this.scheduler.runEntityLater(player, new Runnable() {
+                @Override
+                public void run() {
+                    fallProtection.unprotect(player.getUniqueId());
+                }
+            }, null, fallProtectionTicks);
+        }
+        forceBowTrail(player, trailParticle, Math.max(0, trailTicks), 0);
+    }
+
+    private void forceBowTrail(final Player player, final String particle, final int maxTicks, final int tick) {
+        if (player == null || !player.isOnline() || tick >= maxTicks) {
+            return;
+        }
+        Particles.spawn(player.getLocation().add(0.0D, 0.8D, 0.0D), particle, 2);
+        this.scheduler.runEntityLater(player, new Runnable() {
+            @Override
+            public void run() {
+                forceBowTrail(player, particle, maxTicks, tick + 1);
+            }
+        }, null, 1L);
+    }
+
     private void cobwebProjectile(final Player player, final WeaponDefinition weapon, final ConfigurationSection section) {
         if (this.projectileService != null) {
             this.projectileService.launchCobwebBomb(player, weapon, section);
@@ -531,6 +597,14 @@ public final class AbilityEngine {
         if (map.containsKey("particle_shape") || map.containsKey("particle-shape")) {
             final java.util.Map<Object, Object> data = asMap(map.containsKey("particle_shape") ? map.get("particle_shape") : map.get("particle-shape"));
             particleShape(resolveOrigin(player, data.get("origin"), context), string(data, "effect", string(data, "particle", "CLOUD")), asMap(data.get("shape")), integer(data, "count", 1));
+            return;
+        }
+        if (map.containsKey("beam")) {
+            beam(player, asMap(map.get("beam")));
+            return;
+        }
+        if (map.containsKey("pull")) {
+            pull(player, asMap(map.get("pull")), 0);
             return;
         }
         if (map.containsKey("velocity")) {
@@ -733,6 +807,109 @@ public final class AbilityEngine {
             final java.util.Map<Object, Object> data = asMap(map.get("spawn_projectile"));
             this.projectileService.launchConfigured(player, weapon, section, string(data, "id", "cobweb_bomb"));
         }
+    }
+
+    private void beam(final Player player, final java.util.Map<Object, Object> data) {
+        final Location origin = player.getEyeLocation();
+        final Vector direction = origin.getDirection();
+        if (direction.lengthSquared() <= 0.000001D) {
+            return;
+        }
+        direction.normalize();
+        final String particle = string(data, "particle", string(data, "trail-particle", "CLOUD"));
+        final String sound = string(data, "sound", "");
+        final double maxDistance = Math.max(0.1D, number(data, "max-distance", 24.0D));
+        final double step = Math.max(0.1D, number(data, "step", 0.5D));
+        final double radius = Math.max(0.05D, number(data, "radius", 0.8D));
+        final double radiusSquared = radius * radius;
+        final double damage = number(data, "damage", number(data, "raw-damage", 0.0D));
+        final boolean rawDamage = data.containsKey("raw-damage") || Boolean.valueOf(string(data, "raw", "false")).booleanValue();
+        final boolean playersOnly = Boolean.valueOf(string(data, "players-only", "false")).booleanValue();
+        final boolean lineOfSight = Boolean.valueOf(string(data, "line-of-sight", "false")).booleanValue();
+        if (!sound.trim().isEmpty()) {
+            Sounds.play(origin, sound, 1.0F, 1.0F);
+        }
+        LivingEntity hit = null;
+        for (double distance = 0.0D; distance <= maxDistance; distance += step) {
+            final Location point = origin.clone().add(direction.clone().multiply(distance));
+            Particles.spawn(point, particle, 1);
+            for (final Entity entity : player.getNearbyEntities(maxDistance, maxDistance, maxDistance)) {
+                if (!(entity instanceof LivingEntity) || entity == player || entity.isDead()) {
+                    continue;
+                }
+                if (playersOnly && !(entity instanceof Player)) {
+                    continue;
+                }
+                if (lineOfSight && !player.hasLineOfSight(entity)) {
+                    continue;
+                }
+                if (entity.getLocation().add(0.0D, 0.9D, 0.0D).distanceSquared(point) <= radiusSquared) {
+                    hit = (LivingEntity) entity;
+                    break;
+                }
+            }
+            if (hit != null) {
+                if (damage > 0.0D) {
+                    if (rawDamage) {
+                        Entities.rawDamage(hit, damage);
+                    } else {
+                        hit.damage(damage, player);
+                    }
+                }
+                for (final String effect : stringList(data.get("hit-effects"), "")) {
+                    PotionEffects.apply(hit, effect);
+                }
+                return;
+            }
+        }
+    }
+
+    private void pull(final Player player, final java.util.Map<Object, Object> data, final int elapsedTicks) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        final int durationTicks = Math.max(0, integer(data, "duration-ticks", 80));
+        if (elapsedTicks >= durationTicks) {
+            return;
+        }
+        final int periodTicks = Math.max(1, integer(data, "period-ticks", 1));
+        final double radius = Math.max(0.1D, number(data, "radius", 7.0D));
+        final double speed = number(data, "speed", 0.42D);
+        final double vertical = number(data, "vertical", 0.08D);
+        final String particle = string(data, "particle", "REVERSE_PORTAL");
+        final int particleCount = Math.max(0, integer(data, "particle-count", 6));
+        final String sound = string(data, "sound", "BLOCK_BEACON_ACTIVATE");
+        final boolean playersOnly = Boolean.valueOf(string(data, "players-only", "true")).booleanValue();
+        if (elapsedTicks == 0 && !sound.trim().isEmpty()) {
+            Sounds.play(player.getLocation(), sound, 1.0F, 1.0F);
+        }
+        final Location casterLocation = player.getLocation();
+        Particles.spawn(casterLocation.clone().add(0.0D, 1.0D, 0.0D), particle, particleCount);
+        for (final Entity entity : player.getNearbyEntities(radius, radius, radius)) {
+            if (!(entity instanceof LivingEntity) || entity == player || entity.isDead()) {
+                continue;
+            }
+            if (playersOnly && !(entity instanceof Player)) {
+                continue;
+            }
+            final Vector vector = casterLocation.toVector().subtract(entity.getLocation().toVector());
+            if (vector.lengthSquared() <= 0.0625D) {
+                continue;
+            }
+            vector.setY(0.0D);
+            if (vector.lengthSquared() <= 0.000001D) {
+                continue;
+            }
+            vector.normalize().multiply(speed).setY(vertical);
+            entity.setVelocity(entity.getVelocity().add(vector));
+            Particles.spawn(entity.getLocation().add(0.0D, 1.0D, 0.0D), particle, particleCount);
+        }
+        this.scheduler.runEntityLater(player, new Runnable() {
+            @Override
+            public void run() {
+                pull(player, data, elapsedTicks + periodTicks);
+            }
+        }, null, periodTicks);
     }
 
     private void runTimelineStringAction(final Player player, final String action) {

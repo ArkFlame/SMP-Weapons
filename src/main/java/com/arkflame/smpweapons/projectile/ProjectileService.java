@@ -23,9 +23,11 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Snowball;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.potion.PotionEffect;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -90,6 +92,7 @@ public final class ProjectileService {
         projectile.setVelocity(velocity);
         final ProjectileContext context = new ProjectileContext(projectile.getUniqueId(), projectile, caster.getUniqueId(), weapon, impactSection, projectileSection);
         this.projectiles.put(projectile.getUniqueId(), context);
+        applyArrowEffects(projectile, projectileSection);
         projectileTrail(projectile, context, 0, lifetime);
         this.scheduler.runEntityLater(projectile, new Runnable() {
             @Override
@@ -97,6 +100,20 @@ public final class ProjectileService {
                 expire(projectile.getUniqueId());
             }
         }, null, Math.max(1L, lifetime));
+    }
+
+    public void trackExistingProjectile(final Player caster, final WeaponDefinition weapon, final Entity projectile, final String projectileId) {
+        if (caster == null || weapon == null || projectile == null || projectileId == null || projectileId.trim().isEmpty()) {
+            return;
+        }
+        final ConfigurationSection projectiles = weapon.getProjectilesSection();
+        final ConfigurationSection projectileSection = projectiles == null ? null : projectiles.getConfigurationSection(projectileId);
+        if (projectileSection == null || this.projectiles.size() >= this.maxGlobal || countOwned(caster.getUniqueId()) >= this.maxPerCaster) {
+            return;
+        }
+        final ProjectileContext context = new ProjectileContext(projectile.getUniqueId(), projectile, caster.getUniqueId(), weapon, projectileSection, projectileSection);
+        this.projectiles.put(projectile.getUniqueId(), context);
+        applyArrowEffects(projectile, projectileSection);
     }
 
     private Location resolveOrigin(final Player caster, final String raw) {
@@ -168,7 +185,7 @@ public final class ProjectileService {
         if (context == null) {
             return;
         }
-        if (context.removeOnHit()) {
+        if (context.cancelHitDamage()) {
             event.setCancelled(true);
         }
         final Location impact = event.getEntity().getLocation();
@@ -276,10 +293,53 @@ public final class ProjectileService {
     }
 
     private void runHitTimeline(final Location impact, final LivingEntity hitEntity, final Entity projectile, final ProjectileContext context) {
-        final ConfigurationSection onHit = context.getOnHitSection();
-        final String timeline = onHit == null ? null : onHit.getString("timeline", null);
+        final String timeline = context.getHitTimeline();
         if (timeline != null) {
             runTimeline(timeline, impact, hitEntity, projectile, context);
+        }
+    }
+
+    private void applyArrowEffects(final Entity projectile, final ConfigurationSection projectileSection) {
+        if (projectile == null || projectileSection == null) {
+            return;
+        }
+        final ConfigurationSection arrow = projectileSection.getConfigurationSection("arrow");
+        final java.util.List<String> effects = arrow == null ? java.util.Collections.<String>emptyList() : arrow.getStringList("effects");
+        if (effects.isEmpty()) {
+            return;
+        }
+        try {
+            final Method method = projectile.getClass().getMethod("addCustomEffect", PotionEffect.class, boolean.class);
+            for (final String raw : effects) {
+                final PotionEffect effect = parseArrowEffect(raw);
+                if (effect != null) {
+                    method.invoke(projectile, effect, Boolean.TRUE);
+                }
+            }
+        } catch (final Throwable ignored) {
+            // arrows without tipped-effect support keep vanilla behavior
+        }
+    }
+
+    private PotionEffect parseArrowEffect(final String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return null;
+        }
+        final String[] parts = raw.split(":");
+        final java.util.Optional<org.bukkit.potion.PotionEffectType> type = PotionEffects.resolve(parts[0]);
+        if (!type.isPresent()) {
+            return null;
+        }
+        final int amplifier = Math.max(0, parseInt(parts.length > 1 ? parts[1] : "1", 1) - 1);
+        final int seconds = Math.max(1, parseInt(parts.length > 2 ? parts[2] : "1", 1));
+        return new PotionEffect(type.get(), seconds * 20, amplifier);
+    }
+
+    private static int parseInt(final String raw, final int fallback) {
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (final Exception ignored) {
+            return fallback;
         }
     }
 
@@ -368,6 +428,7 @@ public final class ProjectileService {
         private final String weaponId;
         private final ConfigurationSection section;
         private final ConfigurationSection projectileSection;
+        private final boolean cancelHitDamage;
 
         private ProjectileContext(final UUID projectileId, final Entity entity, final UUID casterId, final WeaponDefinition weapon, final ConfigurationSection section, final ConfigurationSection projectileSection) {
             this.projectileId = projectileId;
@@ -377,6 +438,7 @@ public final class ProjectileService {
             this.weaponId = weapon == null ? "" : weapon.getId().toLowerCase(Locale.ROOT);
             this.section = section;
             this.projectileSection = projectileSection;
+            this.cancelHitDamage = projectileSection == null || projectileSection.getBoolean("cancel-hit-damage", removeOnHit());
         }
 
         private Entity getEntity() {
@@ -403,16 +465,45 @@ public final class ProjectileService {
             return projectileSection == null || projectileSection.getBoolean("remove-on-hit", true);
         }
 
+        private boolean cancelHitDamage() {
+            return cancelHitDamage;
+        }
+
         private ConfigurationSection getOnHitSection() {
             if (projectileSection == null) {
                 return null;
             }
-            return projectileSection.getConfigurationSection("on_hit");
+            ConfigurationSection onHit = projectileSection.getConfigurationSection("on-hit");
+            if (onHit == null) {
+                onHit = projectileSection.getConfigurationSection("on_hit");
+            }
+            if (onHit == null) {
+                onHit = projectileSection.getConfigurationSection("impact");
+            }
+            return onHit;
+        }
+
+        private String getHitTimeline() {
+            if (projectileSection == null) {
+                return null;
+            }
+            ConfigurationSection section = projectileSection.getConfigurationSection("on-hit");
+            if (section != null && section.isString("timeline")) {
+                return section.getString("timeline", null);
+            }
+            section = projectileSection.getConfigurationSection("on_hit");
+            if (section != null && section.isString("timeline")) {
+                return section.getString("timeline", null);
+            }
+            if (projectileSection.isString("timeline")) {
+                return projectileSection.getString("timeline", null);
+            }
+            section = projectileSection.getConfigurationSection("impact");
+            return section == null ? null : section.getString("timeline", null);
         }
 
         private boolean hasHitTimeline() {
-            final ConfigurationSection onHit = getOnHitSection();
-            return onHit != null && onHit.isString("timeline");
+            return getHitTimeline() != null;
         }
 
         @Override

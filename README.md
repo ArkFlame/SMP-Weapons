@@ -11,7 +11,7 @@ mvn clean package
 The compiled plugin jar is created at:
 
 ```text
-target/SMPWeapons-1.0.8.jar
+target/SMPWeapons-1.0.9.jar
 ```
 
 ## Server install
@@ -92,3 +92,7 @@ Example weapons remain `enabled: false`, and enabled-only filtering is now enfor
 
 - Cooldown bypass permissions are disabled by default through `settings.cooldown-bypass-enabled: false`.
 - Cobweb Axe supports `replace_blocks` to remove real cobwebs after the packet-side sphere finishes expanding, while immediately resyncing tracked fake cobwebs.
+
+## 1.0.9 client weapon pack
+
+This release bundles `weapons/client-weapons.yml` with Force Bow, Boom Crossbow, Repell Shield, Ultratotem, Flux Sword, Zero Point, and Heavy Core. It also adds shoot triggers, shield-block passives, inventory passives, totem-pop activation, beam timelines, pull timelines, and banner-pattern item support.

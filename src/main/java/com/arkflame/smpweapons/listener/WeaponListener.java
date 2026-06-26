@@ -3,11 +3,13 @@ package com.arkflame.smpweapons.listener;
 import com.arkflame.smpweapons.SMPWeaponsPlugin;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.util.Entities;
+import com.arkflame.smpweapons.util.PlayerItems;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -70,6 +72,52 @@ public final class WeaponListener implements Listener {
     }
 
     @EventHandler
+    public void onShoot(final EntityShootBowEvent event) {
+        if (!(event.getEntity() instanceof Player)) {
+            return;
+        }
+        final Player player = (Player) event.getEntity();
+        ItemStack item = event.getBow();
+        if (item == null) {
+            item = player.getItemInHand();
+        }
+        final Optional<WeaponDefinition> weapon = this.plugin.getWeaponManager().identify(item);
+        if (!weapon.isPresent() || !weapon.get().isEnabled()) {
+            return;
+        }
+        final TriggerActivation activation = matchShoot(event, weapon.get());
+        if (activation == null) {
+            return;
+        }
+        if (!canUse(player, weapon.get())) {
+            this.plugin.getText().send(player, "no-permission");
+            return;
+        }
+        if (activation.cancelShot) {
+            event.setCancelled(true);
+        }
+        final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
+                && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
+        if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
+            final Map<String, String> placeholders = new HashMap<String, String>();
+            placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
+            this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
+            return;
+        }
+        if (!bypass) {
+            this.plugin.getCooldownService().start(player, weapon.get(), activation.cooldownKey, activation.cooldownSeconds, this.plugin.getConfig().getBoolean("settings.ready-notification", true), item);
+        }
+        if (activation.projectileId != null) {
+            this.plugin.getProjectileService().trackExistingProjectile(player, weapon.get(), event.getProjectile(), activation.projectileId);
+        }
+        if (activation.timeline != null && !activation.timeline.trim().isEmpty()) {
+            this.plugin.getAbilityEngine().executeNamedTimeline(player, weapon.get(), activation.timeline.trim(), null, null, event.getProjectile());
+        } else {
+            this.plugin.getAbilityEngine().executeShoot(player, weapon.get(), event.getForce(), event.getProjectile());
+        }
+    }
+
+    @EventHandler
     public void onProjectileHit(final ProjectileHitEvent event) {
         this.plugin.getProjectileService().handleHit(event);
     }
@@ -77,6 +125,9 @@ public final class WeaponListener implements Listener {
     @EventHandler
     public void onDamage(final EntityDamageByEntityEvent event) {
         this.plugin.getProjectileService().handleDamage(event);
+        if (this.plugin.getShieldPassiveService() != null) {
+            this.plugin.getShieldPassiveService().handleDamage(event);
+        }
         if (!(event.getDamager() instanceof Player) || !(event.getEntity() instanceof LivingEntity)) {
             return;
         }
@@ -201,6 +252,38 @@ public final class WeaponListener implements Listener {
         return matchesLegacyInteract(event, weapon) ? new TriggerActivation("legacy", weapon.getTriggerTimeline(), weapon.getTriggerCooldownKey(), weapon.getCooldownSeconds()) : null;
     }
 
+    private TriggerActivation matchShoot(final EntityShootBowEvent event, final WeaponDefinition weapon) {
+        final org.bukkit.configuration.ConfigurationSection triggers = weapon.getTriggersSection();
+        if (triggers != null && !triggers.getKeys(false).isEmpty()) {
+            for (final String key : triggers.getKeys(false)) {
+                final org.bukkit.configuration.ConfigurationSection trigger = triggers.getConfigurationSection(key);
+                if (trigger == null || !matchesShootEvent(trigger.getStringList("events"))) {
+                    continue;
+                }
+                boolean conditionsOk = true;
+                for (final String condition : trigger.getStringList("conditions")) {
+                    if (!matchesShootCondition(event, condition)) {
+                        conditionsOk = false;
+                        break;
+                    }
+                }
+                if (!conditionsOk) {
+                    continue;
+                }
+                final String cooldownKey = trigger.getString("cooldown", key == null ? "primary" : key);
+                final int seconds = trigger.getInt("cooldown-seconds", cooldownSeconds(weapon, cooldownKey, weapon.getCooldownSeconds()));
+                return new TriggerActivation(key, trigger.getString("timeline", null), cooldownKey, seconds, trigger.getString("projectile", null), trigger.getBoolean("cancel-shot", false));
+            }
+            return null;
+        }
+        return matchesLegacyShoot(weapon) ? new TriggerActivation("legacy", weapon.getTriggerTimeline(), weapon.getTriggerCooldownKey(), weapon.getCooldownSeconds()) : null;
+    }
+
+    private boolean matchesLegacyShoot(final WeaponDefinition weapon) {
+        final java.util.List<String> events = weapon.getTriggerEvents();
+        return events != null && !events.isEmpty() && matchesShootEvent(events);
+    }
+
     private boolean matchesLegacyInteract(final PlayerInteractEvent event, final WeaponDefinition weapon) {
         final Action action = event.getAction();
         final boolean right = action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK;
@@ -255,6 +338,19 @@ public final class WeaponListener implements Listener {
         return false;
     }
 
+    private boolean matchesShootEvent(final java.util.List<String> events) {
+        if (events == null || events.isEmpty()) {
+            return false;
+        }
+        for (final String event : events) {
+            final String normalized = normalize(event);
+            if ("BOW_SHOOT".equals(normalized) || "SHOOT_BOW".equals(normalized) || "PROJECTILE_SHOOT".equals(normalized) || "SHOOT".equals(normalized)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean matchesCondition(final PlayerInteractEvent event, final String raw) {
         final String condition = normalize(raw);
         final Player player = event.getPlayer();
@@ -292,6 +388,44 @@ public final class WeaponListener implements Listener {
             return true;
         }
         return true;
+    }
+
+    private boolean matchesShootCondition(final EntityShootBowEvent event, final String raw) {
+        final String condition = normalize(raw);
+        final Player player = (Player) event.getEntity();
+        if ("SNEAKING".equals(condition) || "SNEAK".equals(condition)) {
+            return player.isSneaking();
+        }
+        if ("NOT_SNEAKING".equals(condition) || "NOT_SNEAK".equals(condition)) {
+            return !player.isSneaking();
+        }
+        if ("MAIN_HAND".equals(condition)) {
+            final ItemStack bow = event.getBow();
+            return itemsMatch(bow, PlayerItems.mainHand(player)) || PlayerItems.offHand(player) == null;
+        }
+        if ("OFF_HAND".equals(condition)) {
+            return itemsMatch(event.getBow(), PlayerItems.offHand(player));
+        }
+        if (condition.startsWith("HAS_PERMISSION:")) {
+            return player.hasPermission(raw.substring(raw.indexOf(':') + 1));
+        }
+        if (condition.startsWith("WORLD_ALLOWLIST:")) {
+            return containsCsv(raw.substring(raw.indexOf(':') + 1), player.getWorld().getName());
+        }
+        if (condition.startsWith("WORLD_DENYLIST:")) {
+            return !containsCsv(raw.substring(raw.indexOf(':') + 1), player.getWorld().getName());
+        }
+        if ("COOLDOWN_READY".equals(condition) || condition.startsWith("COOLDOWN_READY:")) {
+            return true;
+        }
+        return true;
+    }
+
+    private boolean itemsMatch(final ItemStack left, final ItemStack right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left == right || left.equals(right);
     }
 
     private int cooldownSeconds(final WeaponDefinition weapon, final String key, final int fallback) {
@@ -366,12 +500,24 @@ public final class WeaponListener implements Listener {
         private final String timeline;
         private final String cooldownKey;
         private final int cooldownSeconds;
+        private final String projectileId;
+        private final boolean cancelShot;
 
         private TriggerActivation(final String id, final String timeline, final String cooldownKey, final int cooldownSeconds) {
+            this(id, timeline, cooldownKey, cooldownSeconds, null);
+        }
+
+        private TriggerActivation(final String id, final String timeline, final String cooldownKey, final int cooldownSeconds, final String projectileId) {
+            this(id, timeline, cooldownKey, cooldownSeconds, projectileId, false);
+        }
+
+        private TriggerActivation(final String id, final String timeline, final String cooldownKey, final int cooldownSeconds, final String projectileId, final boolean cancelShot) {
             this.id = id;
             this.timeline = timeline;
             this.cooldownKey = cooldownKey == null || cooldownKey.trim().isEmpty() ? "primary" : cooldownKey;
             this.cooldownSeconds = Math.max(0, cooldownSeconds);
+            this.projectileId = projectileId == null || projectileId.trim().isEmpty() ? null : projectileId.trim();
+            this.cancelShot = cancelShot;
         }
     }
 

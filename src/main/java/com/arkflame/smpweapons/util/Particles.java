@@ -85,6 +85,18 @@ public final class Particles {
             aliases = new String[]{"WHITE_SMOKE", "CAMPFIRE_COSY_SMOKE", "SMOKE_NORMAL", "SMOKE", "CLOUD"};
         } else if ("EXPLOSION".equals(normalized)) {
             aliases = new String[]{"EXPLOSION", "EXPLOSION_NORMAL", "EXPLOSION_LARGE", "CLOUD"};
+        } else if ("SONIC_BOOM".equals(normalized)) {
+            aliases = new String[]{"SONIC_BOOM", "EXPLOSION_LARGE", "EXPLOSION_NORMAL", "CLOUD"};
+        } else if ("SCULK_SOUL".equals(normalized)) {
+            aliases = new String[]{"SCULK_SOUL", "SPELL_WITCH", "PORTAL", "CLOUD"};
+        } else if ("SOUL".equals(normalized)) {
+            aliases = new String[]{"SOUL", "SPELL_WITCH", "SMOKE_NORMAL", "CLOUD"};
+        } else if ("REVERSE_PORTAL".equals(normalized)) {
+            aliases = new String[]{"REVERSE_PORTAL", "PORTAL", "CLOUD"};
+        } else if ("DRAGON_BREATH".equals(normalized)) {
+            aliases = new String[]{"DRAGON_BREATH", "SPELL_WITCH", "CLOUD"};
+        } else if ("TOTEM".equals(normalized)) {
+            aliases = new String[]{"TOTEM", "VILLAGER_HAPPY", "HAPPY_VILLAGER", "CLOUD"};
         } else {
             aliases = new String[]{normalized, "CLOUD"};
         }

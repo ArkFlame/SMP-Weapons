@@ -4,6 +4,8 @@ import com.arkflame.smpweapons.ability.AbilityEngine;
 import com.arkflame.smpweapons.ability.CooldownService;
 import com.arkflame.smpweapons.ability.FallProtectionService;
 import com.arkflame.smpweapons.ability.GlideService;
+import com.arkflame.smpweapons.ability.InventoryPassiveService;
+import com.arkflame.smpweapons.ability.ShieldPassiveService;
 import com.arkflame.smpweapons.block.TemporaryBlockService;
 import com.arkflame.smpweapons.command.DynamicCommandRegistry;
 import com.arkflame.smpweapons.command.SMPWeaponsCommand;
@@ -13,6 +15,7 @@ import com.arkflame.smpweapons.item.WeaponItemFactory;
 import com.arkflame.smpweapons.listener.MenuClickListener;
 import com.arkflame.smpweapons.listener.DynamicCommandInterceptListener;
 import com.arkflame.smpweapons.listener.GlideToggleListener;
+import com.arkflame.smpweapons.listener.TotemPopListener;
 import com.arkflame.smpweapons.listener.WeaponListener;
 import com.arkflame.smpweapons.menu.MenuManager;
 import com.arkflame.smpweapons.projectile.ProjectileService;
@@ -44,6 +47,8 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     private ProjectileService projectileService;
     private AbilityEngine abilityEngine;
     private DynamicCommandRegistry dynamicCommandRegistry;
+    private ShieldPassiveService shieldPassiveService;
+    private InventoryPassiveService inventoryPassiveService;
 
     @Override
     public void onEnable() {
@@ -58,6 +63,9 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     public void onDisable() {
         if (this.dynamicCommandRegistry != null) {
             this.dynamicCommandRegistry.shutdown();
+        }
+        if (this.inventoryPassiveService != null) {
+            this.inventoryPassiveService.stop();
         }
         if (this.cooldownService != null) {
             this.cooldownService.resetAll();
@@ -83,6 +91,9 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         reloadConfig();
         if (this.temporaryBlockService != null && getConfig().getBoolean("real-blocks.restore-original-block", true)) {
             this.temporaryBlockService.restoreAllNow();
+        }
+        if (this.inventoryPassiveService != null) {
+            this.inventoryPassiveService.stop();
         }
         if (this.projectileService != null) {
             this.projectileService.clear();
@@ -136,6 +147,9 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
                 getConfig().getInt("engine.max-target-distance", getConfig().getInt("settings.max-target-distance", 32))
         );
         this.projectileService.setAbilityEngine(this.abilityEngine);
+        this.shieldPassiveService = new ShieldPassiveService(this.weaponManager);
+        this.inventoryPassiveService = new InventoryPassiveService(this);
+        this.inventoryPassiveService.start();
         if (this.dynamicCommandRegistry == null) {
             this.dynamicCommandRegistry = new DynamicCommandRegistry(this);
         }
@@ -156,6 +170,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MenuClickListener(this), this);
         getServer().getPluginManager().registerEvents(new DynamicCommandInterceptListener(this), this);
         registerGlideToggleListenerIfAvailable();
+        registerTotemPopListenerIfAvailable();
     }
 
     @SuppressWarnings("unchecked")
@@ -174,6 +189,22 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private void registerTotemPopListenerIfAvailable() {
+        try {
+            final Class<? extends Event> eventClass = (Class<? extends Event>) Class.forName("org.bukkit.event.entity.EntityResurrectEvent").asSubclass(Event.class);
+            final TotemPopListener listener = new TotemPopListener(this);
+            getServer().getPluginManager().registerEvent(eventClass, listener, EventPriority.HIGHEST, new EventExecutor() {
+                @Override
+                public void execute(final org.bukkit.event.Listener ignored, final Event event) {
+                    listener.handle(event);
+                }
+            }, this, false);
+        } catch (final ClassNotFoundException ignored) {
+            getLogger().info("Entity resurrect event not available on this server; Ultratotem pop activation requires a modern server.");
+        }
+    }
+
     private void saveDefaultFiles() {
         saveDefaultConfig();
         saveResourceIfMissing("messages.yml");
@@ -182,6 +213,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         saveResourceIfMissing("weapons/more-weapons.yml");
         saveResourceIfMissing("weapons/custom-weapons.yml");
         saveResourceIfMissing("weapons/examples.yml");
+        saveResourceIfMissing("weapons/client-weapons.yml");
     }
 
     private void saveResourceIfMissing(final String path) {
@@ -202,4 +234,5 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     public GlideService getGlideService() { return glideService; }
     public TemporaryBlockService getTemporaryBlockService() { return temporaryBlockService; }
     public ProjectileService getProjectileService() { return projectileService; }
+    public ShieldPassiveService getShieldPassiveService() { return shieldPassiveService; }
 }

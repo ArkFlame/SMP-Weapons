@@ -71,6 +71,27 @@ public final class Sounds {
         if ("ENTITY_FIREWORK_ROCKET_LAUNCH".equals(normalized)) {
             return new String[]{normalized, "FIREWORK_LAUNCH"};
         }
+        if ("ENTITY_WARDEN_SONIC_BOOM".equals(normalized)) {
+            return new String[]{normalized, "ENTITY_ENDERDRAGON_GROWL", "ENDERDRAGON_GROWL", "EXPLODE"};
+        }
+        if ("ENTITY_WARDEN_ROAR".equals(normalized)) {
+            return new String[]{normalized, "ENTITY_ENDERDRAGON_GROWL", "ENDERDRAGON_GROWL", "ENDERDRAGON_HIT"};
+        }
+        if ("ITEM_TRIDENT_THUNDER".equals(normalized)) {
+            return new String[]{normalized, "ENTITY_LIGHTNING_THUNDER", "AMBIENCE_THUNDER", "EXPLODE"};
+        }
+        if ("ITEM_CROSSBOW_SHOOT".equals(normalized)) {
+            return new String[]{normalized, "SHOOT_ARROW", "ENTITY_ARROW_SHOOT"};
+        }
+        if ("ITEM_TOTEM_USE".equals(normalized)) {
+            return new String[]{normalized, "ENTITY_PLAYER_LEVELUP", "LEVEL_UP"};
+        }
+        if ("BLOCK_RESPAWN_ANCHOR_DEPLETE".equals(normalized)) {
+            return new String[]{normalized, "EXPLODE"};
+        }
+        if ("BLOCK_BEACON_ACTIVATE".equals(normalized)) {
+            return new String[]{normalized, "LEVEL_UP"};
+        }
         if ("ENTITY_PLAYER_ATTACK_SWEEP".equals(normalized)) {
             return new String[]{normalized, "SUCCESSFUL_HIT"};
         }

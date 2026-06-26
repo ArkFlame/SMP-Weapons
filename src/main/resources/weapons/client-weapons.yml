@@ -1,0 +1,291 @@
+# SMPWeapons 1.0.9 client-requested weapon pack.
+# Loaded automatically from the weapons folder.
+# Existing custom weapon files can override these ids with override: true.
+
+weapons:
+  force_bow:
+    enabled: true
+    override: false
+    display-id: "Force Bow"
+    item:
+      material: [BOW]
+      name: "<gradient:#7dd3fc:#2563eb><bold>Force Bow</bold></gradient>"
+      lore:
+        - "<gray>Sneak and shoot to dash forward.</gray>"
+        - "<gray>Dash power scales with bow charge.</gray>"
+        - "<dark_gray>No passive.</dark_gray>"
+      enchants:
+        - "POWER:5"
+        - "PUNCH:1"
+        - "UNBREAKING:3"
+      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      unbreakable: true
+    legacy:
+      names-contains: ["Force Bow"]
+    commands:
+      get: ["getforcebow"]
+    cooldowns:
+      primary:
+        seconds: 20
+    triggers:
+      shoot:
+        events: [BOW_SHOOT]
+        conditions: [SNEAKING, MAIN_HAND]
+        cooldown: primary
+    ability:
+      type: FORCE_BOW_DASH
+      min-forward: 1.25
+      max-forward: 4.40
+      upward: 0.34
+      fall-protection-ticks: 90
+      trail-particle: CLOUD
+      trail-ticks: 10
+
+  boom_crossbow:
+    enabled: true
+    override: false
+    display-id: "Boom Crossbow"
+    item:
+      material: [CROSSBOW, BOW]
+      name: "<gradient:#fb7185:#f97316><bold>Boom Crossbow</bold></gradient>"
+      lore:
+        - "<gray>Sneak and shoot to fire harming explosive arrows.</gray>"
+        - "<gray>Impact creates an AOE blast for extra damage.</gray>"
+        - "<dark_gray>No passive.</dark_gray>"
+      enchants:
+        - "MULTISHOT:1"
+        - "PIERCING:4"
+        - "QUICK_CHARGE:4"
+        - "UNBREAKING:3"
+      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      unbreakable: true
+    legacy:
+      names-contains: ["Boom Crossbow"]
+    commands:
+      get: ["getboomcrossbow"]
+    cooldowns:
+      primary:
+        seconds: 28
+    triggers:
+      shoot:
+        events: [BOW_SHOOT]
+        conditions: [SNEAKING, MAIN_HAND]
+        cooldown: primary
+        projectile: boom_arrow
+    projectiles:
+      boom_arrow:
+        type: ARROW
+        remove-on-hit: true
+        cancel-hit-damage: false
+        arrow:
+          effects:
+            - "HARMING:2:1"
+        on-hit:
+          timeline: boom_impact
+    timelines:
+      boom_impact:
+        "0":
+          - sound: {target: impact_location, name: ENTITY_GENERIC_EXPLODE, volume: 1.2, pitch: 0.8}
+          - particle_shape:
+              origin: impact_location
+              effect: EXPLOSION_LARGE
+              count: 2
+              shape: {type: SPHERE, radius: 2.5, points: 48}
+          - particle_shape:
+              origin: impact_location
+              effect: FLAME
+              count: 1
+              shape: {type: RING, radius: 3.5, points: 64}
+          - raw_damage:
+              amount: 3.0
+              selector:
+                type: nearby_players
+                radius: 3.5
+                include-caster: false
+                line-of-sight: false
+
+  repell_shield:
+    enabled: true
+    override: false
+    display-id: "Repell Shield"
+    item:
+      material: [SHIELD, BANNER]
+      name: "<gradient:#ef4444:#facc15><bold>Repell Shield</bold></gradient>"
+      lore:
+        - "<gray>Passive only.</gray>"
+        - "<gray>Blocking has a <yellow>15%</yellow> chance to reflect <yellow>40%</yellow> damage.</gray>"
+      banner:
+        base-color: BLACK
+        patterns:
+          - {type: BORDER, color: RED}
+          - {type: CROSS, color: WHITE}
+          - {type: STRIPE_CENTER, color: RED}
+          - {type: CIRCLE, color: YELLOW}
+      enchants:
+        - "UNBREAKING:3"
+      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      unbreakable: true
+    legacy:
+      names-contains: ["Repell Shield", "Repel Shield"]
+    commands:
+      get: ["getrepellshield"]
+    passives:
+      shield_repel:
+        events: [SHIELD_BLOCK]
+        chance: 15.0
+        reflect-percent: 40.0
+        source-damage: RAW_EVENT_DAMAGE
+        particle: CRIT_MAGIC
+        sound: ITEM_SHIELD_BLOCK
+
+  ultratotem:
+    enabled: true
+    override: false
+    display-id: "Ultratotem"
+    item:
+      material: [TOTEM_OF_UNDYING, GOLDEN_APPLE]
+      name: "<gradient:#facc15:#22c55e><bold>Ultratotem</bold></gradient>"
+      lore:
+        - "<gray>Triggers when the totem pops.</gray>"
+        - "<gray>Grants strong survival effects after pop.</gray>"
+        - "<dark_gray>No passive.</dark_gray>"
+      enchants:
+        - "UNBREAKING:1"
+      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES]
+    legacy:
+      names-contains: ["Ultratotem"]
+    commands:
+      get: ["getultratotem"]
+    triggers:
+      pop:
+        events: [TOTEM_POP]
+        timeline: pop_effects
+        cooldown: pop
+        cooldown-seconds: 0
+    timelines:
+      pop_effects:
+        "0":
+          - sound: {target: caster, name: ITEM_TOTEM_USE, volume: 1.0, pitch: 1.0}
+          - particle_shape:
+              origin: caster
+              effect: TOTEM
+              count: 2
+              shape: {type: SPHERE, radius: 2.0, points: 64}
+          - potion: {target: caster, effects: ["ABSORPTION:5:10", "REGENERATION:3:20", "FIRE_RESISTANCE:1:120", "RESISTANCE:1:60"]}
+
+  flux_sword:
+    enabled: true
+    override: false
+    display-id: "Flux Sword"
+    item:
+      material: [NETHERITE_SWORD, DIAMOND_SWORD]
+      name: "<gradient:#111827:#a855f7><bold>Flux Sword</bold></gradient>"
+      lore:
+        - "<gray>Passive: <yellow>10%</yellow> chance to inflict Darkness.</gray>"
+        - "<gray>Sneak right click to cast a warden beam.</gray>"
+      enchants:
+        - "SHARPNESS:5"
+        - "UNBREAKING:3"
+      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      unbreakable: true
+    legacy:
+      names-contains: ["Flux Sword"]
+    commands:
+      get: ["getfluxsword"]
+    cooldowns:
+      primary:
+        seconds: 35
+    triggers:
+      cast:
+        events: [RIGHT_CLICK]
+        conditions: [SNEAKING, MAIN_HAND]
+        cooldown: primary
+        timeline: flux_cast
+    passives:
+      darkness_on_hit:
+        events: [HIT]
+        chance: 10.0
+        effects:
+          - "DARKNESS:1:4"
+    timelines:
+      flux_cast:
+        "0":
+          - potion: {target: caster, effects: ["STRENGTH:3:5"]}
+          - sound: {target: caster, name: ENTITY_WARDEN_SONIC_BOOM, volume: 1.0, pitch: 1.15}
+          - beam:
+              particle: SONIC_BOOM
+              trail-particle: SCULK_SOUL
+              max-distance: 26.0
+              step: 0.55
+              radius: 1.0
+              damage: 0.0
+              players-only: false
+              line-of-sight: true
+
+  zero_point:
+    enabled: true
+    override: false
+    display-id: "Zero Point"
+    item:
+      material: [HEART_OF_THE_SEA, PRISMARINE_CRYSTALS, NETHER_STAR]
+      name: "<gradient:#38bdf8:#14b8a6><bold>Zero Point</bold></gradient>"
+      lore:
+        - "<gray>Passive only.</gray>"
+        - "<gray>Grants Conduit Power while carried in inventory.</gray>"
+      enchants:
+        - "UNBREAKING:1"
+      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES]
+    legacy:
+      names-contains: ["Zero Point"]
+    commands:
+      get: ["getzeropoint"]
+    passives:
+      conduit_inventory:
+        events: [INVENTORY_TICK]
+        effects:
+          - "CONDUIT_POWER:1:5"
+
+  heavy_core:
+    enabled: true
+    override: false
+    display-id: "Heavy Core"
+    item:
+      material: [HEAVY_CORE, NETHER_STAR]
+      name: "<gradient:#737373:#f97316><bold>Heavy Core</bold></gradient>"
+      lore:
+        - "<gray>Not a weapon.</gray>"
+        - "<gray>Sneak right click to pull nearby players for 4 seconds.</gray>"
+      enchants:
+        - "UNBREAKING:1"
+      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES]
+    legacy:
+      names-contains: ["Heavy Core"]
+    commands:
+      get: ["getheavycore"]
+    cooldowns:
+      primary:
+        seconds: 45
+    triggers:
+      pull:
+        events: [RIGHT_CLICK]
+        conditions: [SNEAKING, MAIN_HAND]
+        cooldown: primary
+        timeline: pull_players
+    timelines:
+      pull_players:
+        "0":
+          - sound: {target: caster, name: BLOCK_BEACON_ACTIVATE, volume: 1.2, pitch: 0.7}
+          - particle_shape:
+              origin: caster
+              effect: REVERSE_PORTAL
+              count: 1
+              shape: {type: RING, radius: 7.0, points: 96}
+          - pull:
+              radius: 7.0
+              duration-ticks: 80
+              period-ticks: 1
+              speed: 0.42
+              vertical: 0.08
+              particle: REVERSE_PORTAL
+              particle-count: 6
+              players-only: true

@@ -34,8 +34,7 @@ public final class Materials {
         if (direct != null) {
             return Optional.of(direct);
         }
-        final String legacy = legacyAlias(normalized);
-        if (!legacy.equals(normalized)) {
+        for (final String legacy : legacyAliases(normalized)) {
             final Material legacyMaterial = Material.getMaterial(legacy);
             if (legacyMaterial != null) {
                 return Optional.of(legacyMaterial);
@@ -77,31 +76,49 @@ public final class Materials {
         return material == Material.AIR || material.name().endsWith("_AIR");
     }
 
-    private static String legacyAlias(final String normalized) {
+    private static String[] legacyAliases(final String normalized) {
         if ("COBWEB".equals(normalized)) {
-            return "WEB";
+            return new String[]{"WEB"};
         }
         if ("GRAY_STAINED_GLASS_PANE".equals(normalized) || "GREY_STAINED_GLASS_PANE".equals(normalized)) {
-            return "STAINED_GLASS_PANE";
+            return new String[]{"STAINED_GLASS_PANE"};
         }
         if ("GRAY_STAINED_GLASS".equals(normalized) || "GREY_STAINED_GLASS".equals(normalized)) {
-            return "STAINED_GLASS";
+            return new String[]{"STAINED_GLASS"};
         }
         if ("NETHERITE_SWORD".equals(normalized)) {
-            return "DIAMOND_SWORD";
+            return new String[]{"DIAMOND_SWORD"};
         }
         if ("NETHERITE_AXE".equals(normalized)) {
-            return "DIAMOND_AXE";
+            return new String[]{"DIAMOND_AXE"};
         }
         if ("MACE".equals(normalized)) {
-            return "DIAMOND_AXE";
+            return new String[]{"DIAMOND_AXE"};
         }
         if ("NETHERITE_SPEAR".equals(normalized)) {
-            return "TRIDENT";
+            return new String[]{"TRIDENT"};
         }
         if ("TRIDENT".equals(normalized)) {
-            return "DIAMOND_SWORD";
+            return new String[]{"DIAMOND_SWORD"};
         }
-        return normalized;
+        if ("CROSSBOW".equals(normalized)) {
+            return new String[]{"BOW"};
+        }
+        if ("SHIELD".equals(normalized)) {
+            return new String[]{"BANNER", "WALL_BANNER", "SIGN"};
+        }
+        if ("TOTEM_OF_UNDYING".equals(normalized)) {
+            return new String[]{"GOLDEN_APPLE"};
+        }
+        if ("HEAVY_CORE".equals(normalized)) {
+            return new String[]{"NETHER_STAR"};
+        }
+        if ("HEART_OF_THE_SEA".equals(normalized)) {
+            return new String[]{"PRISMARINE_CRYSTALS", "NETHER_STAR"};
+        }
+        if ("TIPPED_ARROW".equals(normalized) || "SPECTRAL_ARROW".equals(normalized)) {
+            return new String[]{"ARROW"};
+        }
+        return new String[0];
     }
 }

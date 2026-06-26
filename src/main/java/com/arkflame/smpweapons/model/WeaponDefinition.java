@@ -19,6 +19,7 @@ public final class WeaponDefinition {
     private final List<String> enchants;
     private final List<String> itemFlags;
     private final boolean unbreakable;
+    private final ConfigurationSection bannerSection;
     private final List<String> legacyNamesContains;
     private final List<String> legacyLoreContains;
     private final Integer legacyCustomModelData;
@@ -52,6 +53,7 @@ public final class WeaponDefinition {
             final List<String> enchants,
             final List<String> itemFlags,
             final boolean unbreakable,
+            final ConfigurationSection bannerSection,
             final List<String> legacyNamesContains,
             final List<String> legacyLoreContains,
             final Integer legacyCustomModelData,
@@ -84,6 +86,7 @@ public final class WeaponDefinition {
         this.enchants = new ArrayList<String>(enchants);
         this.itemFlags = new ArrayList<String>(itemFlags);
         this.unbreakable = unbreakable;
+        this.bannerSection = bannerSection;
         this.legacyNamesContains = new ArrayList<String>(legacyNamesContains);
         this.legacyLoreContains = new ArrayList<String>(legacyLoreContains);
         this.legacyCustomModelData = legacyCustomModelData;
@@ -118,6 +121,7 @@ public final class WeaponDefinition {
         final List<String> materials = item == null ? Collections.singletonList("DIAMOND_SWORD") : MaterialsList.from(item.get("material"));
         final Integer model = integerOrNull(item == null ? null : item.get("custom-model-data"));
         final Integer legacyModel = integerOrNull(legacy == null ? null : legacy.get("custom-model-data"));
+        final ConfigurationSection banner = item == null ? null : item.getConfigurationSection("banner");
         return new WeaponDefinition(
                 id,
                 section.getBoolean("enabled", true),
@@ -130,6 +134,7 @@ public final class WeaponDefinition {
                 item == null ? Collections.<String>emptyList() : item.getStringList("enchants"),
                 item == null || !item.isList("item-flags") ? defaultItemFlags() : item.getStringList("item-flags"),
                 item == null || item.getBoolean("unbreakable", true),
+                banner,
                 legacy == null ? Collections.<String>emptyList() : legacy.getStringList("names-contains"),
                 legacy == null ? Collections.<String>emptyList() : legacy.getStringList("lore-contains"),
                 legacyModel,
@@ -164,6 +169,7 @@ public final class WeaponDefinition {
     public List<String> getEnchants() { return Collections.unmodifiableList(enchants); }
     public List<String> getItemFlags() { return Collections.unmodifiableList(itemFlags); }
     public boolean isUnbreakable() { return unbreakable; }
+    public ConfigurationSection getBannerSection() { return bannerSection; }
     public List<String> getLegacyNamesContains() { return Collections.unmodifiableList(legacyNamesContains); }
     public List<String> getLegacyLoreContains() { return Collections.unmodifiableList(legacyLoreContains); }
     public Integer getLegacyCustomModelData() { return legacyCustomModelData; }
