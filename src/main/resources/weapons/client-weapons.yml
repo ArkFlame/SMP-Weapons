@@ -18,7 +18,7 @@ weapons:
         - "POWER:5"
         - "PUNCH:1"
         - "UNBREAKING:3"
-      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      item-flags: [HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
       unbreakable: true
     legacy:
       names-contains: ["Force Bow"]
@@ -49,15 +49,15 @@ weapons:
       material: [CROSSBOW, BOW]
       name: "<gradient:#fb7185:#f97316><bold>Boom Crossbow</bold></gradient>"
       lore:
-        - "<gray>Sneak and shoot to fire harming explosive arrows.</gray>"
-        - "<gray>Impact creates an AOE blast for extra damage.</gray>"
+        - "<gray>Sneak and shoot to fire a real explosive arrow.</gray>"
+        - "<gray>Impact deals AoE damage in radius.</gray>"
         - "<dark_gray>No passive.</dark_gray>"
       enchants:
         - "MULTISHOT:1"
         - "PIERCING:4"
         - "QUICK_CHARGE:4"
         - "UNBREAKING:3"
-      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      item-flags: [HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
       unbreakable: true
     legacy:
       names-contains: ["Boom Crossbow"]
@@ -72,6 +72,10 @@ weapons:
         conditions: [SNEAKING, MAIN_HAND]
         cooldown: primary
         projectile: boom_arrow
+        shoot-sound:
+          name: ITEM_CROSSBOW_SHOOT
+          volume: 1.2
+          pitch: 0.85
     projectiles:
       boom_arrow:
         type: ARROW
@@ -85,24 +89,25 @@ weapons:
     timelines:
       boom_impact:
         "0":
-          - sound: {target: impact_location, name: ENTITY_GENERIC_EXPLODE, volume: 1.2, pitch: 0.8}
-          - particle_shape:
-              origin: impact_location
-              effect: EXPLOSION_LARGE
-              count: 2
-              shape: {type: SPHERE, radius: 2.5, points: 48}
-          - particle_shape:
-              origin: impact_location
-              effect: FLAME
-              count: 1
-              shape: {type: RING, radius: 3.5, points: 64}
-          - raw_damage:
-              amount: 3.0
-              selector:
-                type: nearby_players
-                radius: 3.5
-                include-caster: false
-                line-of-sight: false
+          - explosion:
+              power: 2.5
+              radius: 4.0
+              damage: 6.0
+              raw: true
+              falloff: NONE
+              players-only: true
+              include-caster: true
+              set-fire: false
+              break-blocks: false
+              sound: ENTITY_GENERIC_EXPLODE
+              volume: 1.3
+              pitch: 0.85
+              particle: EXPLOSION_LARGE
+              knockback: true
+              knockback-strength: 0.45
+              knockback-lift: 0.35
+              knockback-players-only: true
+              knockback-include-caster: true
 
   repell_shield:
     enabled: true
@@ -123,7 +128,7 @@ weapons:
           - {type: CIRCLE, color: YELLOW}
       enchants:
         - "UNBREAKING:3"
-      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      item-flags: [HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
       unbreakable: true
     legacy:
       names-contains: ["Repell Shield", "Repel Shield"]
@@ -151,7 +156,7 @@ weapons:
         - "<dark_gray>No passive.</dark_gray>"
       enchants:
         - "UNBREAKING:1"
-      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES]
+      item-flags: [HIDE_ATTRIBUTES]
     legacy:
       names-contains: ["Ultratotem"]
     commands:
@@ -186,7 +191,7 @@ weapons:
       enchants:
         - "SHARPNESS:5"
         - "UNBREAKING:3"
-      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      item-flags: [HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
       unbreakable: true
     legacy:
       names-contains: ["Flux Sword"]
@@ -234,7 +239,7 @@ weapons:
         - "<gray>Grants Conduit Power while carried in inventory.</gray>"
       enchants:
         - "UNBREAKING:1"
-      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES]
+      item-flags: [HIDE_ATTRIBUTES]
     legacy:
       names-contains: ["Zero Point"]
     commands:
@@ -257,7 +262,7 @@ weapons:
         - "<gray>Sneak right click to pull nearby players for 4 seconds.</gray>"
       enchants:
         - "UNBREAKING:1"
-      item-flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES]
+      item-flags: [HIDE_ATTRIBUTES]
     legacy:
       names-contains: ["Heavy Core"]
     commands:

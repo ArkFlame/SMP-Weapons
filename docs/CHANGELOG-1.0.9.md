@@ -11,6 +11,8 @@
 - Zero Point inventory passive scanner.
 - Heavy Core pull timeline action.
 - Banner pattern support for shield-style items.
+- New `explosion` timeline action with configurable power, radius, damage, raw-damage, players-only, include-caster, set-fire, break-blocks, sound and particle keys. AOE damage falls off with distance.
+- Boom Crossbow item flags updated so the bundled enchantments render in the tooltip.
 
 ## Compatibility
 

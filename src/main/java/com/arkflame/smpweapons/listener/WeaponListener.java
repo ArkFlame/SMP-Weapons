@@ -110,6 +110,9 @@ public final class WeaponListener implements Listener {
         if (activation.projectileId != null) {
             this.plugin.getProjectileService().trackExistingProjectile(player, weapon.get(), event.getProjectile(), activation.projectileId);
         }
+        if (activation.shootSound != null) {
+            com.arkflame.smpweapons.util.Sounds.play(player.getLocation(), activation.shootSound.name, activation.shootSound.volume, activation.shootSound.pitch);
+        }
         if (activation.timeline != null && !activation.timeline.trim().isEmpty()) {
             this.plugin.getAbilityEngine().executeNamedTimeline(player, weapon.get(), activation.timeline.trim(), null, null, event.getProjectile());
         } else {
@@ -272,7 +275,7 @@ public final class WeaponListener implements Listener {
                 }
                 final String cooldownKey = trigger.getString("cooldown", key == null ? "primary" : key);
                 final int seconds = trigger.getInt("cooldown-seconds", cooldownSeconds(weapon, cooldownKey, weapon.getCooldownSeconds()));
-                return new TriggerActivation(key, trigger.getString("timeline", null), cooldownKey, seconds, trigger.getString("projectile", null), trigger.getBoolean("cancel-shot", false));
+                return new TriggerActivation(key, trigger.getString("timeline", null), cooldownKey, seconds, trigger.getString("projectile", null), trigger.getBoolean("cancel-shot", false), parseShootSound(trigger.getConfigurationSection("shoot-sound")));
             }
             return null;
         }
@@ -502,23 +505,50 @@ public final class WeaponListener implements Listener {
         private final int cooldownSeconds;
         private final String projectileId;
         private final boolean cancelShot;
+        private final ShootSound shootSound;
 
         private TriggerActivation(final String id, final String timeline, final String cooldownKey, final int cooldownSeconds) {
-            this(id, timeline, cooldownKey, cooldownSeconds, null);
+            this(id, timeline, cooldownKey, cooldownSeconds, null, false, null);
         }
 
         private TriggerActivation(final String id, final String timeline, final String cooldownKey, final int cooldownSeconds, final String projectileId) {
-            this(id, timeline, cooldownKey, cooldownSeconds, projectileId, false);
+            this(id, timeline, cooldownKey, cooldownSeconds, projectileId, false, null);
         }
 
-        private TriggerActivation(final String id, final String timeline, final String cooldownKey, final int cooldownSeconds, final String projectileId, final boolean cancelShot) {
+        private TriggerActivation(final String id, final String timeline, final String cooldownKey, final int cooldownSeconds, final String projectileId, final boolean cancelShot, final ShootSound shootSound) {
             this.id = id;
             this.timeline = timeline;
             this.cooldownKey = cooldownKey == null || cooldownKey.trim().isEmpty() ? "primary" : cooldownKey;
             this.cooldownSeconds = Math.max(0, cooldownSeconds);
             this.projectileId = projectileId == null || projectileId.trim().isEmpty() ? null : projectileId.trim();
             this.cancelShot = cancelShot;
+            this.shootSound = shootSound;
         }
+    }
+
+    private static final class ShootSound {
+        private final String name;
+        private final float volume;
+        private final float pitch;
+
+        private ShootSound(final String name, final float volume, final float pitch) {
+            this.name = name;
+            this.volume = Math.max(0.0F, Math.min(2.0F, volume));
+            this.pitch = Math.max(0.5F, Math.min(2.0F, pitch));
+        }
+    }
+
+    private static ShootSound parseShootSound(final org.bukkit.configuration.ConfigurationSection section) {
+        if (section == null) {
+            return null;
+        }
+        final String raw = section.getString("name", section.getString("sound", ""));
+        if (raw == null || raw.trim().isEmpty()) {
+            return null;
+        }
+        final float volume = (float) section.getDouble("volume", 1.0D);
+        final float pitch = (float) section.getDouble("pitch", 1.0D);
+        return new ShootSound(raw.trim(), volume, pitch);
     }
 
 }

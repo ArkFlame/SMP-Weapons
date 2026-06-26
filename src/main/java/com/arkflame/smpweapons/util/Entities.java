@@ -38,20 +38,30 @@ public final class Entities {
         victim.setVelocity(victim.getVelocity().add(vector.normalize().multiply(force)));
     }
 
+    public static void pushAwayWithLift(final Entity victim, final Location source, final double horizontal, final double lift) {
+        if (victim == null || source == null) {
+            return;
+        }
+        final Vector horizontalVector = victim.getLocation().toVector().subtract(source.toVector());
+        if (horizontalVector.lengthSquared() <= 0.000001D) {
+            horizontalVector.setX(0.0D).setZ(0.0D);
+        } else {
+            horizontalVector.setY(0.0D).normalize();
+        }
+        final Vector velocity = victim.getVelocity();
+        velocity.add(horizontalVector.multiply(horizontal));
+        velocity.setY(velocity.getY() + lift);
+        victim.setVelocity(velocity);
+    }
+
     public static void rawDamage(final LivingEntity entity, final double damage) {
-        if (entity == null || damage <= 0.0D) {
+        if (entity == null || damage <= 0.0D || Double.isNaN(damage) || Double.isInfinite(damage)) {
             return;
         }
-        if (entity.getHealth() <= damage) {
-            entity.damage(70.0D);
+        if (entity.isDead()) {
             return;
         }
-        try {
-            entity.damage(0.0D);
-        } catch (final Exception ignored) {
-            // hurt animation is cosmetic
-        }
-        entity.setHealth(Math.max(0.0D, entity.getHealth() - damage));
+        entity.damage(damage);
     }
 
     public static void setGliding(final Player player, final boolean gliding) {

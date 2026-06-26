@@ -137,6 +137,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         this.projectileService = new ProjectileService(this.schedulerBridge, this.temporaryBlockService, getConfig().getInt("engine.max-active-projectiles-per-player", 10), getConfig().getInt("engine.max-active-projectiles-global", 200));
         this.cooldownService = new CooldownService(this.text, this.schedulerBridge);
         this.abilityEngine = new AbilityEngine(
+                this,
                 this.schedulerBridge,
                 this.fallProtectionService,
                 this.cooldownService,

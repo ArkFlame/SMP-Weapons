@@ -19,6 +19,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
@@ -31,8 +32,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class AbilityEngine {
+    private final JavaPlugin plugin;
     private final FoliaAPI scheduler;
     private final FallProtectionService fallProtection;
     private final CooldownService cooldowns;
@@ -43,7 +46,8 @@ public final class AbilityEngine {
     private final int maxTargetDistance;
     private final Map<String, Set<UUID>> damageOnceMemory = new HashMap<String, Set<UUID>>();
 
-    public AbilityEngine(final FoliaAPI scheduler, final FallProtectionService fallProtection, final CooldownService cooldowns, final TemporaryBlockService temporaryBlocks, final ProjectileService projectileService, final GlideService glideService, final int maxAirLoopTicks, final int maxTargetDistance) {
+    public AbilityEngine(final JavaPlugin plugin, final FoliaAPI scheduler, final FallProtectionService fallProtection, final CooldownService cooldowns, final TemporaryBlockService temporaryBlocks, final ProjectileService projectileService, final GlideService glideService, final int maxAirLoopTicks, final int maxTargetDistance) {
+        this.plugin = plugin;
         this.scheduler = scheduler;
         this.fallProtection = fallProtection;
         this.cooldowns = cooldowns;
@@ -445,12 +449,22 @@ public final class AbilityEngine {
         final double clamped = Math.max(0.0D, Math.min(1.0D, force));
         final double forward = minForward + ((maxForward - minForward) * clamped);
         final Vector direction = player.getEyeLocation().getDirection().clone().setY(0.0D);
-        if (direction.lengthSquared() > 0.000001D) {
-            direction.normalize().multiply(forward).setY(upward);
-            player.setVelocity(player.getVelocity().add(direction));
-        } else if (Math.abs(upward) > 0.000001D) {
-            player.setVelocity(player.getVelocity().add(new Vector(0.0D, upward, 0.0D)));
+        if (direction.lengthSquared() <= 0.000001D) {
+            direction.setX(0.0D).setZ(0.0D);
+        } else {
+            direction.normalize();
         }
+        final double finalForward = forward;
+        final Vector dashVector = direction.multiply(finalForward).setY(upward);
+        this.scheduler.runEntityLater(player, new Runnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    return;
+                }
+                player.setVelocity(player.getVelocity().add(dashVector));
+            }
+        }, null, 1L);
         if (fallProtectionTicks > 0) {
             this.fallProtection.protect(player.getUniqueId());
             this.scheduler.runEntityLater(player, new Runnable() {
@@ -605,6 +619,10 @@ public final class AbilityEngine {
         }
         if (map.containsKey("pull")) {
             pull(player, asMap(map.get("pull")), 0);
+            return;
+        }
+        if (map.containsKey("explosion") || map.containsKey("explode")) {
+            explosion(player, asMap(map.containsKey("explosion") ? map.get("explosion") : map.get("explode")), context);
             return;
         }
         if (map.containsKey("velocity")) {
@@ -806,6 +824,325 @@ public final class AbilityEngine {
         if (map.containsKey("spawn_projectile") && this.projectileService != null) {
             final java.util.Map<Object, Object> data = asMap(map.get("spawn_projectile"));
             this.projectileService.launchConfigured(player, weapon, section, string(data, "id", "cobweb_bomb"));
+        }
+    }
+
+    private void explosion(final Player player, final java.util.Map<Object, Object> data, final AbilityContext context) {
+        if (player == null) {
+            return;
+        }
+        Location origin = null;
+        final Object rawOrigin = data.get("origin");
+        if (rawOrigin == null && context != null && context.impactLocation != null) {
+            origin = context.impactLocation.clone();
+        }
+        if (origin == null) {
+            origin = resolveOrigin(player, rawOrigin, context == null ? AbilityContext.empty() : context);
+        }
+        if (origin == null) {
+            origin = player.getLocation().clone();
+        }
+        if (origin.getWorld() == null) {
+            return;
+        }
+        final Location finalOrigin = origin.clone();
+        final Runnable explosionBody = new Runnable() {
+            @Override
+            public void run() {
+                runExplosion(player, data, finalOrigin);
+            }
+        };
+        if (this.scheduler != null) {
+            this.scheduler.runRegion(finalOrigin, explosionBody);
+        } else {
+            explosionBody.run();
+        }
+    }
+
+    private void runExplosion(final Player player, final java.util.Map<Object, Object> data, final Location origin) {
+        if (player == null || origin == null || origin.getWorld() == null) {
+            return;
+        }
+        final float power = (float) Math.max(0.0D, Math.min(8.0D, number(data, "power", number(data, "explosion-power", 2.0D))));
+        final boolean setFire = Boolean.valueOf(string(data, "set-fire", "false")).booleanValue();
+        final boolean breakBlocks = Boolean.valueOf(string(data, "break-blocks", "false")).booleanValue();
+        final double radius = Math.max(0.5D, number(data, "radius", number(data, "damage-radius", 3.5D)));
+        final double damage = Math.max(0.0D, number(data, "damage", number(data, "amount", 3.0D)));
+        final boolean rawDamage = data.containsKey("raw-damage") || Boolean.valueOf(string(data, "raw", "true")).booleanValue();
+        final boolean playersOnly = Boolean.valueOf(string(data, "players-only", "true")).booleanValue();
+        final boolean includeCaster = Boolean.valueOf(string(data, "include-caster", "true")).booleanValue();
+        final String falloffMode = string(data, "falloff", string(data, "damage-falloff", "LINEAR"))
+                .toUpperCase(Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+        final String sound = string(data, "sound", "ENTITY_GENERIC_EXPLODE");
+        final String particle = string(data, "particle", "EXPLOSION_LARGE");
+        final float volume = (float) Math.max(0.0D, Math.min(2.0D, number(data, "volume", 1.0D)));
+        final float pitch = (float) Math.max(0.5D, Math.min(2.0D, number(data, "pitch", 0.8D)));
+        final boolean knockback = data.containsKey("knockback") || Boolean.valueOf(string(data, "knockback", "true")).booleanValue();
+        final double knockbackStrength = Math.max(0.0D, number(data, "knockback-strength", number(data, "knockback-power", 0.45D)));
+        final double knockbackLift = Math.max(0.0D, number(data, "knockback-lift", number(data, "knockback-vertical", 0.35D)));
+        final boolean knockbackPlayersOnly = Boolean.valueOf(string(data, "knockback-players-only", "true")).booleanValue();
+        final boolean knockbackIncludeCaster = Boolean.valueOf(string(data, "knockback-include-caster", "true")).booleanValue();
+        if (!sound.trim().isEmpty()) {
+            Sounds.play(origin, sound, volume, pitch);
+        }
+        try {
+            final org.bukkit.World world = origin.getWorld();
+            final float worldPower = breakBlocks ? power : 0.0F;
+            world.createExplosion(origin.getX(), origin.getY(), origin.getZ(), worldPower, setFire, breakBlocks);
+            if (power > 0.0F && !breakBlocks) {
+                Particles.spawn(origin, particle, Math.max(1, (int) Math.ceil(power)));
+            }
+        } catch (final Throwable ignored) {
+            Particles.spawn(origin, particle, 2);
+        }
+        if (knockback && (knockbackStrength > 0.0D || knockbackLift > 0.0D)) {
+            applyExplosionKnockbackToNearbyPlayers(player, origin, radius, knockbackStrength, knockbackLift, knockbackPlayersOnly, knockbackIncludeCaster);
+            if (!knockbackPlayersOnly) {
+                for (final Entity nearby : origin.getWorld().getNearbyEntities(origin, radius, radius, radius)) {
+                    if (!(nearby instanceof LivingEntity) || nearby instanceof Player || nearby.isDead()) {
+                        continue;
+                    }
+                    final double distance = nearby.getLocation().distance(origin);
+                    if (distance > radius) {
+                        continue;
+                    }
+                    applyExplosionKnockback((LivingEntity) nearby, origin, knockbackStrength, knockbackLift);
+                }
+            }
+        }
+        if (damage > 0.0D) {
+            applyExplosionDamageToNearbyPlayers(player, origin, radius, damage, rawDamage, includeCaster, falloffMode);
+            if (!playersOnly) {
+                for (final Entity nearby : origin.getWorld().getNearbyEntities(origin, radius, radius, radius)) {
+                    if (!(nearby instanceof LivingEntity) || nearby instanceof Player || nearby.isDead()) {
+                        continue;
+                    }
+                    final double distance = nearby.getLocation().distance(origin);
+                    if (distance > radius) {
+                        continue;
+                    }
+                    final double scaled = scaledExplosionDamage(damage, radius, distance, falloffMode);
+                    if (scaled <= 0.0D) {
+                        continue;
+                    }
+                    applyExplosionDamage(player, (LivingEntity) nearby, scaled, rawDamage);
+                }
+            }
+        }
+    }
+
+    private void applyExplosionKnockbackToNearbyPlayers(final Player source, final Location origin, final double radius, final double horizontal, final double lift, final boolean playersOnly, final boolean includeCaster) {
+        if (source == null || origin == null || origin.getWorld() == null || radius <= 0.0D || (horizontal <= 0.0D && lift <= 0.0D)) {
+            return;
+        }
+        final Location snapshotOrigin = origin.clone();
+        final Runnable snapshotTask = new Runnable() {
+            @Override
+            public void run() {
+                final java.util.List<Player> players = new ArrayList<Player>(Bukkit.getOnlinePlayers());
+                for (final Player target : players) {
+                    if (target == null) {
+                        continue;
+                    }
+                    if (!includeCaster && target.getUniqueId().equals(source.getUniqueId())) {
+                        continue;
+                    }
+                    schedulePlayerKnockback(target, snapshotOrigin.clone(), radius, horizontal, lift);
+                }
+            }
+        };
+        if (this.scheduler != null) {
+            this.scheduler.runGlobal(snapshotTask);
+        } else {
+            snapshotTask.run();
+        }
+    }
+
+    private void schedulePlayerKnockback(final Player target, final Location origin, final double radius, final double horizontal, final double lift) {
+        final Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                if (target == null || !target.isOnline() || target.isDead() || target.getWorld() == null || origin == null || origin.getWorld() == null) {
+                    return;
+                }
+                if (!target.getWorld().equals(origin.getWorld())) {
+                    return;
+                }
+                final double distanceSquared = target.getLocation().distanceSquared(origin);
+                if (distanceSquared > radius * radius) {
+                    return;
+                }
+                Entities.pushAwayWithLift(target, origin, horizontal, lift);
+            }
+        };
+        if (this.scheduler != null) {
+            this.scheduler.runEntityLater(target, task, null, 1L);
+        } else {
+            task.run();
+        }
+    }
+
+    private void applyExplosionKnockback(final LivingEntity target, final Location origin, final double horizontal, final double lift) {
+        if (target == null || origin == null || target.isDead()) {
+            return;
+        }
+        final Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                if (target == null || target.isDead()) {
+                    return;
+                }
+                Entities.pushAwayWithLift(target, origin, horizontal, lift);
+            }
+        };
+        if (this.scheduler != null) {
+            this.scheduler.runEntityLater(target, task, null, 1L);
+        } else {
+            task.run();
+        }
+    }
+
+    private void applyExplosionDamageToNearbyPlayers(final Player source, final Location origin, final double radius, final double damage, final boolean rawDamage, final boolean includeCaster, final String falloffMode) {
+        if (source == null || origin == null || origin.getWorld() == null || damage <= 0.0D || radius <= 0.0D) {
+            return;
+        }
+        final Location snapshotOrigin = origin.clone();
+        final AtomicInteger candidates = new AtomicInteger(0);
+        final AtomicInteger scheduled = new AtomicInteger(0);
+        final AtomicInteger inside = new AtomicInteger(0);
+        final AtomicInteger damaged = new AtomicInteger(0);
+        final Runnable snapshotTask = new Runnable() {
+            @Override
+            public void run() {
+                final java.util.List<Player> players = new ArrayList<Player>(Bukkit.getOnlinePlayers());
+                candidates.set(players.size());
+                for (final Player target : players) {
+                    if (target == null) {
+                        continue;
+                    }
+                    if (!includeCaster && target.getUniqueId().equals(source.getUniqueId())) {
+                        continue;
+                    }
+                    scheduled.incrementAndGet();
+                    applyExplosionDamageIfInsideRadius(source, target, snapshotOrigin.clone(), radius, damage, rawDamage, falloffMode, inside, damaged);
+                }
+                debugExplosionDamage(snapshotOrigin, radius, damage, candidates, scheduled, inside, damaged);
+            }
+        };
+        if (this.scheduler != null) {
+            this.scheduler.runGlobal(snapshotTask);
+        } else {
+            snapshotTask.run();
+        }
+    }
+
+    private void applyExplosionDamageIfInsideRadius(final Player source, final Player target, final Location origin, final double radius, final double damage, final boolean rawDamage, final String falloffMode, final AtomicInteger inside, final AtomicInteger damaged) {
+        final Runnable damageTask = new Runnable() {
+            @Override
+            public void run() {
+                if (target == null || !target.isOnline() || target.isDead() || target.getWorld() == null || origin == null || origin.getWorld() == null) {
+                    return;
+                }
+                if (!target.getWorld().equals(origin.getWorld())) {
+                    return;
+                }
+                final double radiusSquared = radius * radius;
+                final double distanceSquared = target.getLocation().distanceSquared(origin);
+                if (distanceSquared > radiusSquared) {
+                    return;
+                }
+                inside.incrementAndGet();
+                final double distance = Math.sqrt(distanceSquared);
+                final double scaled = scaledExplosionDamage(damage, radius, distance, falloffMode);
+                if (scaled <= 0.0D || Double.isNaN(scaled) || Double.isInfinite(scaled)) {
+                    return;
+                }
+                if (rawDamage) {
+                    Entities.rawDamage(target, scaled);
+                } else {
+                    try {
+                        target.setNoDamageTicks(0);
+                        target.setLastDamage(0.0D);
+                    } catch (final Throwable ignored) {
+                        // some old forks expose inconsistent invulnerability internals
+                    }
+                    target.damage(scaled);
+                }
+                damaged.incrementAndGet();
+            }
+        };
+        if (this.scheduler != null) {
+            this.scheduler.runEntityLater(target, damageTask, null, 1L);
+        } else {
+            damageTask.run();
+        }
+    }
+
+    private void debugExplosionDamage(final Location origin, final double radius, final double damage, final AtomicInteger candidates, final AtomicInteger scheduled, final AtomicInteger inside, final AtomicInteger damaged) {
+        if (this.plugin == null) {
+            return;
+        }
+        if (!this.plugin.getConfig().getBoolean("settings.debug", false)) {
+            return;
+        }
+        final Runnable logTask = new Runnable() {
+            @Override
+            public void run() {
+                final String worldName = origin == null || origin.getWorld() == null ? "unknown" : origin.getWorld().getName();
+                final String position = origin == null
+                        ? "unknown"
+                        : String.format(Locale.ROOT, "%s:%.2f,%.2f,%.2f", worldName, origin.getX(), origin.getY(), origin.getZ());
+                plugin.getLogger().info("explosion-damage origin=" + position
+                        + " radius=" + radius
+                        + " configured=" + damage
+                        + " candidates=" + candidates.get()
+                        + " scheduled=" + scheduled.get()
+                        + " inside=" + inside.get()
+                        + " damaged=" + damaged.get());
+            }
+        };
+        if (this.scheduler != null) {
+            this.scheduler.runGlobalLater(logTask, 3L);
+        } else {
+            logTask.run();
+        }
+    }
+
+    private double scaledExplosionDamage(final double damage, final double radius, final double distance, final String falloffMode) {
+        if (damage <= 0.0D) {
+            return 0.0D;
+        }
+        final String mode = falloffMode == null ? "LINEAR" : falloffMode;
+        if ("NONE".equals(mode) || "FLAT".equals(mode) || "FULL".equals(mode)) {
+            return damage;
+        }
+        final double falloff = radius <= 0.0D ? 1.0D : Math.max(0.0D, 1.0D - (distance / radius));
+        return damage * falloff;
+    }
+
+    private void applyExplosionDamage(final Player source, final LivingEntity target, final double amount, final boolean rawDamage) {
+        if (target == null || amount <= 0.0D) {
+            return;
+        }
+        final Runnable damageTask = new Runnable() {
+            @Override
+            public void run() {
+                if (target.isDead()) {
+                    return;
+                }
+                if (rawDamage) {
+                    Entities.rawDamage(target, amount);
+                } else {
+                    target.damage(amount, source);
+                }
+            }
+        };
+        if (this.scheduler != null) {
+            this.scheduler.runEntityLater(target, damageTask, null, 1L);
+        } else {
+            damageTask.run();
         }
     }
 
