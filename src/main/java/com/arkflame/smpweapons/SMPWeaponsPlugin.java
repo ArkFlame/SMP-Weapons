@@ -10,6 +10,7 @@ import com.arkflame.smpweapons.block.TemporaryBlockService;
 import com.arkflame.smpweapons.command.DynamicCommandRegistry;
 import com.arkflame.smpweapons.command.SMPWeaponsCommand;
 import com.arkflame.smpweapons.config.WeaponManager;
+import com.arkflame.smpweapons.hook.SMPRegionsHook;
 import com.arkflame.smpweapons.item.ItemIdentityService;
 import com.arkflame.smpweapons.item.WeaponItemFactory;
 import com.arkflame.smpweapons.listener.MenuClickListener;
@@ -49,6 +50,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     private DynamicCommandRegistry dynamicCommandRegistry;
     private ShieldPassiveService shieldPassiveService;
     private InventoryPassiveService inventoryPassiveService;
+    private SMPRegionsHook smpRegionsHook;
 
     @Override
     public void onEnable() {
@@ -114,6 +116,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         this.schedulerBridge = new FoliaAPI(this);
         final YamlConfiguration messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
         this.text = new TextBridge(this, YamlUtil.map(messages));
+        this.smpRegionsHook = new SMPRegionsHook(this, getConfig().getConfigurationSection("hooks.smp-regions"));
         this.itemIdentityService = new ItemIdentityService(this);
         this.itemFactory = new WeaponItemFactory(this.text, this.itemIdentityService);
         this.weaponManager = new WeaponManager(this, this.itemIdentityService);
@@ -134,7 +137,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
                 getConfig().getBoolean("virtual-blocks.force-packet-only", true),
                 getConfig().getString("virtual-blocks.cleanup-particle", "WHITE_SMOKE")
         );
-        this.projectileService = new ProjectileService(this.schedulerBridge, this.temporaryBlockService, getConfig().getInt("engine.max-active-projectiles-per-player", 10), getConfig().getInt("engine.max-active-projectiles-global", 200));
+        this.projectileService = new ProjectileService(this.schedulerBridge, this.temporaryBlockService, getConfig().getInt("engine.max-active-projectiles-per-player", 10), getConfig().getInt("engine.max-active-projectiles-global", 200), this.smpRegionsHook);
         this.cooldownService = new CooldownService(this.text, this.schedulerBridge);
         this.abilityEngine = new AbilityEngine(
                 this,
@@ -236,4 +239,5 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     public TemporaryBlockService getTemporaryBlockService() { return temporaryBlockService; }
     public ProjectileService getProjectileService() { return projectileService; }
     public ShieldPassiveService getShieldPassiveService() { return shieldPassiveService; }
+    public SMPRegionsHook getSMPRegionsHook() { return smpRegionsHook; }
 }

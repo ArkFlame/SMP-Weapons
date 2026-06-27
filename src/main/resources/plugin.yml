@@ -5,6 +5,8 @@ author: ${plugin.author}
 description: ${project.description}
 api-version: 1.13
 folia-supported: true
+softdepend:
+  - SMPRegions
 commands:
   smpweapons:
     description: Manage SMP Weapons.

@@ -2,6 +2,7 @@ package com.arkflame.smpweapons.projectile;
 
 import com.arkflame.smpweapons.ability.AbilityEngine;
 import com.arkflame.smpweapons.block.TemporaryBlockService;
+import com.arkflame.smpweapons.hook.SMPRegionsHook;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.util.FoliaAPI;
 import com.arkflame.smpweapons.util.Materials;
@@ -38,18 +39,24 @@ public final class ProjectileService {
     private final TemporaryBlockService temporaryBlocks;
     private final int maxPerCaster;
     private final int maxGlobal;
+    private final SMPRegionsHook smpRegionsHook;
     private AbilityEngine abilityEngine;
     private final Map<UUID, ProjectileContext> projectiles = new HashMap<UUID, ProjectileContext>();
 
     public ProjectileService(final FoliaAPI scheduler, final TemporaryBlockService temporaryBlocks) {
-        this(scheduler, temporaryBlocks, 10, 200);
+        this(scheduler, temporaryBlocks, 10, 200, null);
     }
 
     public ProjectileService(final FoliaAPI scheduler, final TemporaryBlockService temporaryBlocks, final int maxPerCaster, final int maxGlobal) {
+        this(scheduler, temporaryBlocks, maxPerCaster, maxGlobal, null);
+    }
+
+    public ProjectileService(final FoliaAPI scheduler, final TemporaryBlockService temporaryBlocks, final int maxPerCaster, final int maxGlobal, final SMPRegionsHook smpRegionsHook) {
         this.scheduler = scheduler;
         this.temporaryBlocks = temporaryBlocks;
         this.maxPerCaster = Math.max(1, maxPerCaster);
         this.maxGlobal = Math.max(1, maxGlobal);
+        this.smpRegionsHook = smpRegionsHook;
     }
 
     public void setAbilityEngine(final AbilityEngine abilityEngine) {
@@ -185,10 +192,17 @@ public final class ProjectileService {
         if (context == null) {
             return;
         }
+        final Location impact = event.getEntity().getLocation();
+        if (isRegionDenied(context.getCasterId(), impact)) {
+            event.setCancelled(true);
+            if (context.removeOnHit()) {
+                projectile.remove();
+            }
+            return;
+        }
         if (context.cancelHitDamage()) {
             event.setCancelled(true);
         }
-        final Location impact = event.getEntity().getLocation();
         final LivingEntity hit = event.getEntity() instanceof LivingEntity ? (LivingEntity) event.getEntity() : null;
         runHitEffects(hit, context);
         runHitTimeline(impact, hit, projectile, context);
@@ -210,6 +224,12 @@ public final class ProjectileService {
             return;
         }
         final Location impact = projectile.getLocation();
+        if (isRegionDenied(context.getCasterId(), impact)) {
+            if (context.removeOnHit()) {
+                projectile.remove();
+            }
+            return;
+        }
         runHitTimeline(impact, null, projectile, context);
         if (!context.hasHitTimeline()) {
             runImpact(impact, context);
@@ -279,6 +299,14 @@ public final class ProjectileService {
                 projectileTrail(projectile, context, tick + 1, lifetime);
             }
         }, null, 1L);
+    }
+
+    private boolean isRegionDenied(final UUID casterId, final Location impact) {
+        if (this.smpRegionsHook == null || casterId == null) {
+            return false;
+        }
+        final Player caster = Bukkit.getPlayer(casterId);
+        return caster != null && !this.smpRegionsHook.isAllowed(caster, impact);
     }
 
     private void runHitEffects(final LivingEntity hitEntity, final ProjectileContext context) {

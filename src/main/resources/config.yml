@@ -13,6 +13,12 @@ settings:
   reset-cooldowns-on-quit: true
   require-use-permission: false
   cooldown-bypass-enabled: false
+hooks:
+  smp-regions:
+    enabled: true
+    deny-when-pvp-denied: true
+    blacklist-regions: []
+    debug: false
 sounds:
   enabled: true
   deny: BLOCK_NOTE_BLOCK_BASS

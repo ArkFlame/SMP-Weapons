@@ -25,6 +25,7 @@ usage:
   - '<gold>/smpweapons cooldown [player] [weapon|all]</gold> <gray>- reset cooldowns'
   - '<gold>/smpweapons debug item|blocks|restoreblocks|validate</gold> <gray>- inspect admin state'
   - '<gold>/smpweapons reload</gold> <gray>- reload files'
+region-denied: '<red>You cannot use SMP Weapons in this region.'
 ability-cooldown: '<red>Ability is recharging for <white><seconds>s</white>.'
 ability-ready: '<green>Your <weapon> ability is ready.'
 cooldowns-reset: '<green>Cooldowns reset for <white><player></white>.'

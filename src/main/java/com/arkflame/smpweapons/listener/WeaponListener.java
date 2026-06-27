@@ -4,6 +4,7 @@ import com.arkflame.smpweapons.SMPWeaponsPlugin;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.util.Entities;
 import com.arkflame.smpweapons.util.PlayerItems;
+import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -48,6 +49,11 @@ public final class WeaponListener implements Listener {
         if (activation == null) {
             return;
         }
+        final Location actionLocation = event.getClickedBlock() == null ? player.getLocation() : event.getClickedBlock().getLocation();
+        if (isRegionDenied(player, actionLocation, true)) {
+            event.setCancelled(true);
+            return;
+        }
         if (!canUse(player, weapon.get())) {
             this.plugin.getText().send(player, "no-permission");
             return;
@@ -87,6 +93,10 @@ public final class WeaponListener implements Listener {
         }
         final TriggerActivation activation = matchShoot(event, weapon.get());
         if (activation == null) {
+            return;
+        }
+        if (isRegionDenied(player, player.getLocation(), true)) {
+            event.setCancelled(true);
             return;
         }
         if (!canUse(player, weapon.get())) {
@@ -137,6 +147,10 @@ public final class WeaponListener implements Listener {
         final Player attacker = (Player) event.getDamager();
         final Optional<WeaponDefinition> weapon = this.plugin.getWeaponManager().identify(attacker.getItemInHand());
         if (!weapon.isPresent() || !weapon.get().isEnabled()) {
+            return;
+        }
+        if (isRegionDenied(attacker, event.getEntity().getLocation(), false)) {
+            event.setCancelled(true);
             return;
         }
         this.plugin.getAbilityEngine().executePassive(attacker, (LivingEntity) event.getEntity(), weapon.get());
@@ -459,6 +473,16 @@ public final class WeaponListener implements Listener {
         } catch (final Exception ignored) {
             return false;
         }
+    }
+
+    private boolean isRegionDenied(final Player player, final Location actionLocation, final boolean notify) {
+        if (this.plugin.getSMPRegionsHook() == null || this.plugin.getSMPRegionsHook().isAllowed(player, actionLocation)) {
+            return false;
+        }
+        if (notify) {
+            this.plugin.getText().send(player, "region-denied");
+        }
+        return true;
     }
 
     private boolean canUse(final Player player, final WeaponDefinition weapon) {
