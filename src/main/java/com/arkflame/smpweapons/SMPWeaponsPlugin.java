@@ -1,6 +1,7 @@
 package com.arkflame.smpweapons;
 
 import com.arkflame.smpweapons.ability.AbilityEngine;
+import com.arkflame.smpweapons.ability.AbilityItemProtectionService;
 import com.arkflame.smpweapons.ability.CooldownService;
 import com.arkflame.smpweapons.ability.FallProtectionService;
 import com.arkflame.smpweapons.ability.GlideService;
@@ -13,6 +14,7 @@ import com.arkflame.smpweapons.config.WeaponManager;
 import com.arkflame.smpweapons.hook.SMPRegionsHook;
 import com.arkflame.smpweapons.item.ItemIdentityService;
 import com.arkflame.smpweapons.item.WeaponItemFactory;
+import com.arkflame.smpweapons.listener.AbilityItemProtectionListener;
 import com.arkflame.smpweapons.listener.MenuClickListener;
 import com.arkflame.smpweapons.listener.DynamicCommandInterceptListener;
 import com.arkflame.smpweapons.listener.GlideToggleListener;
@@ -47,6 +49,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     private TemporaryBlockService temporaryBlockService;
     private ProjectileService projectileService;
     private AbilityEngine abilityEngine;
+    private AbilityItemProtectionService abilityItemProtectionService;
     private DynamicCommandRegistry dynamicCommandRegistry;
     private ShieldPassiveService shieldPassiveService;
     private InventoryPassiveService inventoryPassiveService;
@@ -68,6 +71,9 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         }
         if (this.inventoryPassiveService != null) {
             this.inventoryPassiveService.stop();
+        }
+        if (this.abilityItemProtectionService != null) {
+            this.abilityItemProtectionService.clearAll();
         }
         if (this.cooldownService != null) {
             this.cooldownService.resetAll();
@@ -109,6 +115,9 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         if (this.text != null) {
             this.text.close();
         }
+        if (this.abilityItemProtectionService != null) {
+            this.abilityItemProtectionService.clearAll();
+        }
         loadServices();
     }
 
@@ -139,6 +148,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         );
         this.projectileService = new ProjectileService(this.schedulerBridge, this.temporaryBlockService, getConfig().getInt("engine.max-active-projectiles-per-player", 10), getConfig().getInt("engine.max-active-projectiles-global", 200), this.smpRegionsHook);
         this.cooldownService = new CooldownService(this.text, this.schedulerBridge);
+        this.abilityItemProtectionService = new AbilityItemProtectionService(this);
         this.abilityEngine = new AbilityEngine(
                 this,
                 this.schedulerBridge,
@@ -170,9 +180,12 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     }
 
     private void registerListeners() {
+        final AbilityItemProtectionListener protectionListener = new AbilityItemProtectionListener(this);
+        getServer().getPluginManager().registerEvents(protectionListener, this);
         getServer().getPluginManager().registerEvents(new WeaponListener(this), this);
         getServer().getPluginManager().registerEvents(new MenuClickListener(this), this);
         getServer().getPluginManager().registerEvents(new DynamicCommandInterceptListener(this), this);
+        registerAbilityItemSwapListenerIfAvailable(protectionListener);
         registerGlideToggleListenerIfAvailable();
         registerTotemPopListenerIfAvailable();
     }
@@ -190,6 +203,21 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
             }, this, false);
         } catch (final ClassNotFoundException ignored) {
             getLogger().info("Elytra glide event not available on this server; Rocket Spear will use best-effort gliding.");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void registerAbilityItemSwapListenerIfAvailable(final AbilityItemProtectionListener listener) {
+        try {
+            final Class<? extends Event> eventClass = (Class<? extends Event>) Class.forName("org.bukkit.event.player.PlayerSwapHandItemsEvent").asSubclass(Event.class);
+            getServer().getPluginManager().registerEvent(eventClass, listener, EventPriority.HIGHEST, new EventExecutor() {
+                @Override
+                public void execute(final org.bukkit.event.Listener ignored, final Event event) {
+                    listener.handleSwapHandItems(event);
+                }
+            }, this, false);
+        } catch (final ClassNotFoundException ignored) {
+            // 1.8 has no offhand swap event.
         }
     }
 
@@ -234,6 +262,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     public MenuManager getMenuManager() { return menuManager; }
     public CooldownService getCooldownService() { return cooldownService; }
     public AbilityEngine getAbilityEngine() { return abilityEngine; }
+    public AbilityItemProtectionService getAbilityItemProtectionService() { return abilityItemProtectionService; }
     public FallProtectionService getFallProtectionService() { return fallProtectionService; }
     public GlideService getGlideService() { return glideService; }
     public TemporaryBlockService getTemporaryBlockService() { return temporaryBlockService; }

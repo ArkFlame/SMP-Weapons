@@ -1,6 +1,7 @@
 package com.arkflame.smpweapons.listener;
 
 import com.arkflame.smpweapons.SMPWeaponsPlugin;
+import com.arkflame.smpweapons.ability.AbilityItemProtectionService;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.util.Entities;
 import com.arkflame.smpweapons.util.PlayerItems;
@@ -59,21 +60,40 @@ public final class WeaponListener implements Listener {
             return;
         }
         event.setCancelled(true);
-        final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
-                && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
-        if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
-            final Map<String, String> placeholders = new HashMap<String, String>();
-            placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
-            this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
-            return;
-        }
-        if (!bypass) {
-            this.plugin.getCooldownService().start(player, weapon.get(), activation.cooldownKey, activation.cooldownSeconds, this.plugin.getConfig().getBoolean("settings.ready-notification", true), item);
-        }
-        if (activation.timeline != null && !activation.timeline.trim().isEmpty()) {
-            this.plugin.getAbilityEngine().executeNamedTimeline(player, weapon.get(), activation.timeline.trim(), null, null, null);
-        } else {
-            this.plugin.getAbilityEngine().execute(player, weapon.get());
+        final AbilityItemProtectionService abilityProtectionService = this.plugin.getAbilityItemProtectionService();
+        final AbilityItemProtectionService.Protection protection = abilityProtectionService == null
+                ? null
+                : abilityProtectionService.start(player, weapon.get(), item);
+        try {
+            final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
+                    && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
+            if (!bypass && abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                return;
+            }
+            if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
+                final Map<String, String> placeholders = new HashMap<String, String>();
+                placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
+                this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
+                return;
+            }
+            if (!bypass) {
+                if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                    return;
+                }
+                this.plugin.getCooldownService().start(player, weapon.get(), activation.cooldownKey, activation.cooldownSeconds, this.plugin.getConfig().getBoolean("settings.ready-notification", true), item);
+            }
+            if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                return;
+            }
+            if (activation.timeline != null && !activation.timeline.trim().isEmpty()) {
+                this.plugin.getAbilityEngine().executeNamedTimeline(player, weapon.get(), activation.timeline.trim(), null, null, null);
+            } else {
+                this.plugin.getAbilityEngine().execute(player, weapon.get());
+            }
+        } finally {
+            if (protection != null) {
+                protection.close();
+            }
         }
     }
 
@@ -106,27 +126,52 @@ public final class WeaponListener implements Listener {
         if (activation.cancelShot) {
             event.setCancelled(true);
         }
-        final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
-                && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
-        if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
-            final Map<String, String> placeholders = new HashMap<String, String>();
-            placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
-            this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
-            return;
-        }
-        if (!bypass) {
-            this.plugin.getCooldownService().start(player, weapon.get(), activation.cooldownKey, activation.cooldownSeconds, this.plugin.getConfig().getBoolean("settings.ready-notification", true), item);
-        }
-        if (activation.projectileId != null) {
-            this.plugin.getProjectileService().trackExistingProjectile(player, weapon.get(), event.getProjectile(), activation.projectileId);
-        }
-        if (activation.shootSound != null) {
-            com.arkflame.smpweapons.util.Sounds.play(player.getLocation(), activation.shootSound.name, activation.shootSound.volume, activation.shootSound.pitch);
-        }
-        if (activation.timeline != null && !activation.timeline.trim().isEmpty()) {
-            this.plugin.getAbilityEngine().executeNamedTimeline(player, weapon.get(), activation.timeline.trim(), null, null, event.getProjectile());
-        } else {
-            this.plugin.getAbilityEngine().executeShoot(player, weapon.get(), event.getForce(), event.getProjectile());
+        final AbilityItemProtectionService abilityProtectionService = this.plugin.getAbilityItemProtectionService();
+        final AbilityItemProtectionService.Protection protection = abilityProtectionService == null
+                ? null
+                : abilityProtectionService.start(player, weapon.get(), item);
+        try {
+            final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
+                    && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
+            if (!bypass && abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                return;
+            }
+            if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
+                final Map<String, String> placeholders = new HashMap<String, String>();
+                placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
+                this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
+                return;
+            }
+            if (!bypass) {
+                if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                    return;
+                }
+                this.plugin.getCooldownService().start(player, weapon.get(), activation.cooldownKey, activation.cooldownSeconds, this.plugin.getConfig().getBoolean("settings.ready-notification", true), item);
+            }
+            if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                return;
+            }
+            if (activation.projectileId != null) {
+                this.plugin.getProjectileService().trackExistingProjectile(player, weapon.get(), event.getProjectile(), activation.projectileId);
+            }
+            if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                return;
+            }
+            if (activation.shootSound != null) {
+                com.arkflame.smpweapons.util.Sounds.play(player.getLocation(), activation.shootSound.name, activation.shootSound.volume, activation.shootSound.pitch);
+            }
+            if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                return;
+            }
+            if (activation.timeline != null && !activation.timeline.trim().isEmpty()) {
+                this.plugin.getAbilityEngine().executeNamedTimeline(player, weapon.get(), activation.timeline.trim(), null, null, event.getProjectile());
+            } else {
+                this.plugin.getAbilityEngine().executeShoot(player, weapon.get(), event.getForce(), event.getProjectile());
+            }
+        } finally {
+            if (protection != null) {
+                protection.close();
+            }
         }
     }
 

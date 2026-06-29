@@ -13,6 +13,11 @@ settings:
   reset-cooldowns-on-quit: true
   require-use-permission: false
   cooldown-bypass-enabled: false
+ability-item-protection:
+  enabled: true
+  finish-grace-ticks: 20
+  stale-timeout-ticks: 100
+  update-inventory-delay-ticks: 1
 hooks:
   smp-regions:
     enabled: true

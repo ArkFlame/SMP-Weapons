@@ -1,6 +1,7 @@
 package com.arkflame.smpweapons.listener;
 
 import com.arkflame.smpweapons.SMPWeaponsPlugin;
+import com.arkflame.smpweapons.ability.AbilityItemProtectionService;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.util.PlayerItems;
 import org.bukkit.configuration.ConfigurationSection;
@@ -46,10 +47,12 @@ public final class TotemPopListener implements Listener {
             preferred = PlayerItems.mainHand(player);
         }
         WeaponDefinition matched = null;
+        ItemStack matchedItem = null;
         if (preferred != null) {
             final Optional<WeaponDefinition> identified = plugin.getWeaponManager().identify(preferred);
             if (identified.isPresent() && identified.get().isEnabled()) {
                 matched = identified.get();
+                matchedItem = preferred;
             }
         }
         if (matched == null) {
@@ -58,6 +61,7 @@ public final class TotemPopListener implements Listener {
                 final Optional<WeaponDefinition> identified = plugin.getWeaponManager().identify(main);
                 if (identified.isPresent() && identified.get().isEnabled()) {
                     matched = identified.get();
+                    matchedItem = main;
                 }
             }
         }
@@ -67,23 +71,37 @@ public final class TotemPopListener implements Listener {
                 final Optional<WeaponDefinition> identified = plugin.getWeaponManager().identify(off);
                 if (identified.isPresent() && identified.get().isEnabled()) {
                     matched = identified.get();
+                    matchedItem = off;
                 }
             }
         }
         if (matched == null) {
             return;
         }
-        final String triggerTimeline = findTriggerTimeline(matched);
-        if (triggerTimeline != null && !triggerTimeline.trim().isEmpty()) {
-            plugin.getAbilityEngine().executeNamedTimeline(player, matched, triggerTimeline.trim(), null, player, null);
-            return;
+        final AbilityItemProtectionService abilityProtectionService = plugin.getAbilityItemProtectionService();
+        final AbilityItemProtectionService.Protection protection = abilityProtectionService == null
+                ? null
+                : abilityProtectionService.start(player, matched, matchedItem);
+        try {
+            if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
+                return;
+            }
+            final String triggerTimeline = findTriggerTimeline(matched);
+            if (triggerTimeline != null && !triggerTimeline.trim().isEmpty()) {
+                plugin.getAbilityEngine().executeNamedTimeline(player, matched, triggerTimeline.trim(), null, player, null);
+                return;
+            }
+            final String legacyTimeline = matched.getTriggerTimeline();
+            if (legacyTimeline != null && !legacyTimeline.trim().isEmpty()) {
+                plugin.getAbilityEngine().executeNamedTimeline(player, matched, legacyTimeline.trim(), null, player, null);
+                return;
+            }
+            plugin.getAbilityEngine().execute(player, matched);
+        } finally {
+            if (protection != null) {
+                protection.close();
+            }
         }
-        final String legacyTimeline = matched.getTriggerTimeline();
-        if (legacyTimeline != null && !legacyTimeline.trim().isEmpty()) {
-            plugin.getAbilityEngine().executeNamedTimeline(player, matched, legacyTimeline.trim(), null, player, null);
-            return;
-        }
-        plugin.getAbilityEngine().execute(player, matched);
     }
 
     private String findTriggerTimeline(final WeaponDefinition weapon) {
