@@ -22,7 +22,6 @@ public final class AbilityItemProtectionService {
 
     private final SMPWeaponsPlugin plugin;
     private final boolean enabled;
-    private final long finishGraceTicks;
     private final long staleTimeoutTicks;
 
     private final Map<UUID, Map<Long, ProtectionState>> protections = new HashMap<UUID, Map<Long, ProtectionState>>();
@@ -31,14 +30,12 @@ public final class AbilityItemProtectionService {
     public AbilityItemProtectionService(final SMPWeaponsPlugin plugin) {
         this.plugin = plugin;
         this.enabled = plugin.getConfig().getBoolean("ability-item-protection.enabled", true);
-        final long grace = Math.max(1L, plugin.getConfig().getLong("ability-item-protection.finish-grace-ticks", 20L));
-        this.finishGraceTicks = grace;
-        this.staleTimeoutTicks = Math.max(grace, plugin.getConfig().getLong("ability-item-protection.stale-timeout-ticks", 100L));
+        this.staleTimeoutTicks = Math.max(1L, plugin.getConfig().getLong("ability-item-protection.stale-timeout-ticks", 2L));
     }
 
     public synchronized Protection start(final Player player, final WeaponDefinition weapon, final ItemStack sourceItem) {
         if (!this.enabled || player == null || weapon == null || sourceItem == null || sourceItem.getType() == Material.AIR) {
-            return new Protection(this, null, -1L, false);
+            return Protection.inactive();
         }
         final long now = System.currentTimeMillis();
         cleanupExpired(now);
@@ -62,7 +59,7 @@ public final class AbilityItemProtectionService {
             this.protections.put(player.getUniqueId(), perPlayer);
         }
         perPlayer.put(Long.valueOf(stateId), state);
-        return new Protection(this, player.getUniqueId(), stateId, true);
+        return new Protection(this, player.getUniqueId(), stateId, true, weapon.getId());
     }
 
     public synchronized boolean sourceStillPresent(final Protection protection) {
@@ -144,7 +141,7 @@ public final class AbilityItemProtectionService {
         this.protections.clear();
     }
 
-    void finish(final UUID playerId, final long stateId) {
+    private synchronized void finish(final UUID playerId, final long stateId) {
         if (playerId == null || stateId < 0L) {
             return;
         }
@@ -152,14 +149,9 @@ public final class AbilityItemProtectionService {
         if (perPlayer == null) {
             return;
         }
-        final ProtectionState state = perPlayer.get(Long.valueOf(stateId));
-        if (state == null) {
-            return;
-        }
-        state.finished = true;
-        final long graceExpiry = System.currentTimeMillis() + this.finishGraceTicks * 50L;
-        if (graceExpiry > state.expiresAtMillis) {
-            state.expiresAtMillis = graceExpiry;
+        perPlayer.remove(Long.valueOf(stateId));
+        if (perPlayer.isEmpty()) {
+            this.protections.remove(playerId);
         }
     }
 
@@ -318,13 +310,18 @@ public final class AbilityItemProtectionService {
         private final long stateId;
         private final boolean active;
         private final String weaponId;
+        private boolean closed;
 
-        Protection(final AbilityItemProtectionService service, final UUID playerId, final long stateId, final boolean active) {
+        Protection(final AbilityItemProtectionService service, final UUID playerId, final long stateId, final boolean active, final String weaponId) {
             this.service = service;
             this.playerId = playerId;
             this.stateId = stateId;
             this.active = active;
-            this.weaponId = null;
+            this.weaponId = weaponId;
+        }
+
+        private static Protection inactive() {
+            return new Protection(null, null, -1L, false, null);
         }
 
         public boolean isActive() {
@@ -341,9 +338,10 @@ public final class AbilityItemProtectionService {
 
         @Override
         public void close() {
-            if (!this.active || this.service == null) {
+            if (!this.active || this.service == null || this.closed) {
                 return;
             }
+            this.closed = true;
             try {
                 this.service.finish(this.playerId, this.stateId);
             } catch (final Throwable ignored) {
@@ -359,7 +357,6 @@ public final class AbilityItemProtectionService {
         final WeaponDefinition weapon;
         final long createdAtMillis;
         long expiresAtMillis;
-        boolean finished;
         final int slotType;
         final int slotIndex;
 

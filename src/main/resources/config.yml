@@ -15,8 +15,8 @@ settings:
   cooldown-bypass-enabled: false
 ability-item-protection:
   enabled: true
-  finish-grace-ticks: 20
-  stale-timeout-ticks: 100
+  finish-grace-ticks: 0
+  stale-timeout-ticks: 2
   update-inventory-delay-ticks: 1
 hooks:
   smp-regions:

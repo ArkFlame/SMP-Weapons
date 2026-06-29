@@ -23,22 +23,20 @@ final class AbilityItemProtectionConfigResourceTest {
     }
 
     @Test
-    void defaultConfigUsesOneSecondFinishGrace() throws Exception {
+    void defaultConfigUsesImmediateFinishGrace() throws Exception {
         try (InputStream stream = getClass().getResourceAsStream("/config.yml")) {
             assertNotNull(stream);
             final YamlConfiguration configuration = load(stream);
-            assertEquals(20L, configuration.getLong("ability-item-protection.finish-grace-ticks"));
+            assertEquals(0L, configuration.getLong("ability-item-protection.finish-grace-ticks"));
         }
     }
 
     @Test
-    void defaultConfigHasStaleTimeoutLongerThanFinishGrace() throws Exception {
+    void defaultConfigUsesShortEmergencyStaleTimeout() throws Exception {
         try (InputStream stream = getClass().getResourceAsStream("/config.yml")) {
             assertNotNull(stream);
             final YamlConfiguration configuration = load(stream);
-            final long staleTimeout = configuration.getLong("ability-item-protection.stale-timeout-ticks");
-            final long finishGrace = configuration.getLong("ability-item-protection.finish-grace-ticks");
-            assertTrue(staleTimeout >= finishGrace, "stale-timeout-ticks must be >= finish-grace-ticks");
+            assertEquals(2L, configuration.getLong("ability-item-protection.stale-timeout-ticks"));
         }
     }
 

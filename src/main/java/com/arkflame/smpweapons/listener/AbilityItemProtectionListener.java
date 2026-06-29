@@ -57,7 +57,7 @@ public final class AbilityItemProtectionListener implements Listener {
         } else if (svc.isProtectedRawSlot(player, view, rawSlot)) {
             cancel = true;
         } else if (hotbarButton >= 0) {
-            final ItemStack hotbarItem = view.getItem(hotbarButton);
+            final ItemStack hotbarItem = player.getInventory().getItem(hotbarButton);
             if (svc.isProtected(player, hotbarItem)) {
                 cancel = true;
             }
@@ -130,7 +130,9 @@ public final class AbilityItemProtectionListener implements Listener {
             return;
         }
         final Player player = event.getPlayer();
-        if (svc.hasProtection(player)) {
+        final int previousSlot = event.getPreviousSlot();
+        final ItemStack previous = previousSlot >= 0 ? player.getInventory().getItem(previousSlot) : null;
+        if (svc.isProtected(player, previous)) {
             cancelAndResync(event, player);
         }
     }
@@ -163,8 +165,8 @@ public final class AbilityItemProtectionListener implements Listener {
             return;
         }
         final Player player = (Player) rawPlayer;
-        final ItemStack main = asItemStack(invokeNoArg(player, MAIN_HAND_METHOD));
-        final ItemStack off = asItemStack(invokeNoArg(player, OFF_HAND_METHOD));
+        final ItemStack main = asItemStack(invokeNoArg(event, MAIN_HAND_METHOD));
+        final ItemStack off = asItemStack(invokeNoArg(event, OFF_HAND_METHOD));
         boolean cancel = false;
         if (svc.isProtected(player, main)) {
             cancel = true;

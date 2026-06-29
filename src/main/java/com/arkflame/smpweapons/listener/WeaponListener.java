@@ -60,26 +60,23 @@ public final class WeaponListener implements Listener {
             return;
         }
         event.setCancelled(true);
+        final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
+                && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
+        if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
+            final Map<String, String> placeholders = new HashMap<String, String>();
+            placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
+            this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
+            return;
+        }
         final AbilityItemProtectionService abilityProtectionService = this.plugin.getAbilityItemProtectionService();
         final AbilityItemProtectionService.Protection protection = abilityProtectionService == null
                 ? null
                 : abilityProtectionService.start(player, weapon.get(), item);
         try {
-            final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
-                    && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
-            if (!bypass && abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
-                return;
-            }
-            if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
-                final Map<String, String> placeholders = new HashMap<String, String>();
-                placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
-                this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
+            if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
                 return;
             }
             if (!bypass) {
-                if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
-                    return;
-                }
                 this.plugin.getCooldownService().start(player, weapon.get(), activation.cooldownKey, activation.cooldownSeconds, this.plugin.getConfig().getBoolean("settings.ready-notification", true), item);
             }
             if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
@@ -126,26 +123,23 @@ public final class WeaponListener implements Listener {
         if (activation.cancelShot) {
             event.setCancelled(true);
         }
+        final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
+                && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
+        if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
+            final Map<String, String> placeholders = new HashMap<String, String>();
+            placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
+            this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
+            return;
+        }
         final AbilityItemProtectionService abilityProtectionService = this.plugin.getAbilityItemProtectionService();
         final AbilityItemProtectionService.Protection protection = abilityProtectionService == null
                 ? null
                 : abilityProtectionService.start(player, weapon.get(), item);
         try {
-            final boolean bypass = this.plugin.getConfig().getBoolean("settings.cooldown-bypass-enabled", false)
-                    && (player.hasPermission("smpweapons.bypasscooldown." + weapon.get().getId()) || player.hasPermission("smpweapons.bypasscooldown.*"));
-            if (!bypass && abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
-                return;
-            }
-            if (!bypass && !this.plugin.getCooldownService().isReady(player, weapon.get(), activation.cooldownKey)) {
-                final Map<String, String> placeholders = new HashMap<String, String>();
-                placeholders.put("seconds", String.valueOf(this.plugin.getCooldownService().remainingSeconds(player, weapon.get(), activation.cooldownKey)));
-                this.plugin.getText().sendActionBar(player, "ability-cooldown", placeholders);
+            if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
                 return;
             }
             if (!bypass) {
-                if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
-                    return;
-                }
                 this.plugin.getCooldownService().start(player, weapon.get(), activation.cooldownKey, activation.cooldownSeconds, this.plugin.getConfig().getBoolean("settings.ready-notification", true), item);
             }
             if (abilityProtectionService != null && !abilityProtectionService.sourceStillPresent(protection)) {
