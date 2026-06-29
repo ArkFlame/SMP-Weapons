@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -87,7 +88,11 @@ public final class WeaponManager {
     }
 
     public Optional<WeaponDefinition> identify(final ItemStack item) {
-        final Optional<String> storedId = this.identityService.read(item);
+        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) {
+            return Optional.empty();
+        }
+        final ItemMeta meta = item.getItemMeta();
+        final Optional<String> storedId = this.identityService.read(meta);
         if (storedId.isPresent()) {
             final Optional<WeaponDefinition> storedWeapon = get(storedId.get());
             if (storedWeapon.isPresent()) {
@@ -95,7 +100,7 @@ public final class WeaponManager {
             }
         }
         for (final WeaponDefinition definition : this.weapons.values()) {
-            if (definition.isEnabled() && this.identityService.matches(item, definition)) {
+            if (definition.isEnabled() && this.identityService.matchesPrepared(item, meta, definition)) {
                 return Optional.of(definition);
             }
         }

@@ -134,6 +134,9 @@ public final class SMPWeaponsCommand implements CommandExecutor, TabCompleter {
         }
         final Player player = (Player) sender;
         player.getInventory().addItem(items().create(weapon.get(), amount));
+        if (plugin.getInventoryPassiveService() != null) {
+            plugin.getInventoryPassiveService().markFullScan(player);
+        }
         final Map<String, String> placeholders = new HashMap<String, String>();
         placeholders.put("weapon", weapon.get().getDisplayId());
         text().send(sender, "received", placeholders);
@@ -164,6 +167,9 @@ public final class SMPWeaponsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         target.getInventory().addItem(items().create(weapon.get(), amount));
+        if (plugin.getInventoryPassiveService() != null) {
+            plugin.getInventoryPassiveService().markFullScan(target);
+        }
         final Map<String, String> placeholders = new HashMap<String, String>();
         placeholders.put("weapon", weapon.get().getDisplayId());
         placeholders.put("player", target.getName());

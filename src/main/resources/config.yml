@@ -45,7 +45,7 @@ engine:
   max-timeline-entries: 512
   max-air-loop-ticks: 200
   max-target-distance: 32
-  inventory-passive-period-ticks: 40
+  inventory-passive-period-ticks: 20
   restore-real-blocks-on-disable: true
   restore-real-blocks-on-reload: true
   clear-virtual-blocks-on-reload: true

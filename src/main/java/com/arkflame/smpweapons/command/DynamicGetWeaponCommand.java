@@ -34,6 +34,9 @@ public final class DynamicGetWeaponCommand extends Command {
         final Player player = (Player) sender;
         final ItemStack item = plugin.getItemFactory().create(weapon, 1);
         player.getInventory().addItem(item);
+        if (plugin.getInventoryPassiveService() != null) {
+            plugin.getInventoryPassiveService().markFullScan(player);
+        }
         final java.util.Map<String, String> placeholders = new java.util.HashMap<String, String>();
         placeholders.put("weapon", weapon.getDisplayId());
         plugin.getText().send(player, "received", placeholders);

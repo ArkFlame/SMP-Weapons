@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public final class TextBridge implements AutoCloseable {
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
@@ -26,6 +27,7 @@ public final class TextBridge implements AutoCloseable {
             .hexColors()
             .useUnusualXRepeatedCharacterHexFormat()
             .build();
+    private static final Pattern SECTION_COLOR_PATTERN = Pattern.compile("(?i)§[0-9A-FK-ORX]");
 
     private final BukkitAudiences audiences;
     private final Map<String, Object> messages;
@@ -135,7 +137,7 @@ public final class TextBridge implements AutoCloseable {
         if (input == null) {
             return "";
         }
-        return input.replaceAll("(?i)§[0-9A-FK-ORX]", "");
+        return SECTION_COLOR_PATTERN.matcher(input).replaceAll("");
     }
 
     public static String normalizePlain(final String input) {

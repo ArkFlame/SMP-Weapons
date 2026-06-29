@@ -70,6 +70,9 @@ public final class MenuClickListener implements Listener {
         final String upper = action.toUpperCase(java.util.Locale.ROOT);
         if ("GET".equals(upper) || "GIVE".equals(upper)) {
             player.getInventory().addItem(this.plugin.getItemFactory().create(weapon, 1));
+            if (this.plugin.getInventoryPassiveService() != null) {
+                this.plugin.getInventoryPassiveService().markFullScan(player);
+            }
             final Map<String, String> placeholders = new HashMap<String, String>();
             placeholders.put("weapon", weapon.getDisplayId());
             this.plugin.getText().send(player, "received", placeholders);

@@ -18,6 +18,9 @@ public final class ItemIdentityService {
     private final Method containerGet;
     private final Object stringPersistentDataType;
     private final Object key;
+    private final Method metaHasCustomModelData;
+    private final Method metaGetCustomModelData;
+    private final Method metaSetCustomModelData;
 
     public ItemIdentityService(final JavaPlugin plugin) {
         this.plugin = plugin;
@@ -26,6 +29,9 @@ public final class ItemIdentityService {
         this.containerGet = method("org.bukkit.persistence.PersistentDataContainer", "get", classOrNull("org.bukkit.NamespacedKey"), classOrNull("org.bukkit.persistence.PersistentDataType"));
         this.stringPersistentDataType = staticField("org.bukkit.persistence.PersistentDataType", "STRING");
         this.key = createKey(plugin, "weapon_id");
+        this.metaHasCustomModelData = method("org.bukkit.inventory.meta.ItemMeta", "hasCustomModelData");
+        this.metaGetCustomModelData = method("org.bukkit.inventory.meta.ItemMeta", "getCustomModelData");
+        this.metaSetCustomModelData = method("org.bukkit.inventory.meta.ItemMeta", "setCustomModelData", Integer.class);
     }
 
     public void write(final ItemMeta meta, final String weaponId) {
@@ -40,32 +46,45 @@ public final class ItemIdentityService {
         }
     }
 
-    public Optional<String> read(final ItemStack item) {
-        if (item == null || !item.hasItemMeta() || this.metaGetPersistentDataContainer == null || this.containerGet == null || this.key == null || this.stringPersistentDataType == null) {
+    public Optional<String> read(final ItemMeta meta) {
+        if (meta == null || this.metaGetPersistentDataContainer == null || this.containerGet == null || this.key == null || this.stringPersistentDataType == null) {
             return Optional.empty();
         }
         try {
-            final Object container = this.metaGetPersistentDataContainer.invoke(item.getItemMeta());
+            final Object container = this.metaGetPersistentDataContainer.invoke(meta);
             final Object value = this.containerGet.invoke(container, this.key, this.stringPersistentDataType);
             if (value instanceof String && !((String) value).trim().isEmpty()) {
                 return Optional.of((String) value);
             }
-        } catch (final Exception ignored) {
-            // old server, no PDC
-        }
+        } catch (final Exception ignored) { }
         return Optional.empty();
+    }
+
+    public Optional<String> read(final ItemStack item) {
+        if (item == null || !item.hasItemMeta() || this.metaGetPersistentDataContainer == null || this.containerGet == null || this.key == null || this.stringPersistentDataType == null) {
+            return Optional.empty();
+        }
+        return read(item.getItemMeta());
     }
 
     public boolean matches(final ItemStack item, final WeaponDefinition definition) {
         if (item == null || definition == null || !item.hasItemMeta()) {
             return false;
         }
-        final Optional<String> stored = read(item);
+        final ItemMeta meta = item.getItemMeta();
+        final Optional<String> stored = read(meta);
         if (stored.isPresent() && stored.get().equalsIgnoreCase(definition.getId())) {
             return true;
         }
-        final ItemMeta meta = item.getItemMeta();
-        final boolean materialMatches = Materials.find(definition.getMaterialAliases()).isPresent() && item.getType() == Materials.find(definition.getMaterialAliases()).get();
+        return matchesPrepared(item, meta, definition);
+    }
+
+    public boolean matchesPrepared(final ItemStack item, final ItemMeta meta, final WeaponDefinition definition) {
+        if (item == null || meta == null || definition == null) {
+            return false;
+        }
+        final Optional<org.bukkit.Material> resolvedMaterial = Materials.find(definition.getMaterialAliases());
+        final boolean materialMatches = resolvedMaterial.isPresent() && item.getType() == resolvedMaterial.get();
         final Integer model = getCustomModelData(meta);
         if (materialMatches && definition.getLegacyCustomModelData() != null && model != null && definition.getLegacyCustomModelData().intValue() == model.intValue()) {
             return true;
@@ -100,17 +119,15 @@ public final class ItemIdentityService {
     }
 
     public Integer getCustomModelData(final ItemMeta meta) {
-        if (meta == null) {
+        if (meta == null || this.metaHasCustomModelData == null || this.metaGetCustomModelData == null) {
             return null;
         }
         try {
-            final Method has = meta.getClass().getMethod("hasCustomModelData");
-            final Object hasValue = has.invoke(meta);
+            final Object hasValue = this.metaHasCustomModelData.invoke(meta);
             if (!(hasValue instanceof Boolean) || !((Boolean) hasValue).booleanValue()) {
                 return null;
             }
-            final Method get = meta.getClass().getMethod("getCustomModelData");
-            final Object value = get.invoke(meta);
+            final Object value = this.metaGetCustomModelData.invoke(meta);
             return value instanceof Integer ? (Integer) value : null;
         } catch (final Exception ignored) {
             return null;
@@ -118,12 +135,11 @@ public final class ItemIdentityService {
     }
 
     public void setCustomModelData(final ItemMeta meta, final Integer data) {
-        if (meta == null || data == null) {
+        if (meta == null || data == null || this.metaSetCustomModelData == null) {
             return;
         }
         try {
-            final Method set = meta.getClass().getMethod("setCustomModelData", Integer.class);
-            set.invoke(meta, data);
+            this.metaSetCustomModelData.invoke(meta, data);
         } catch (final Exception ignored) {
             // 1.8 no custom model data API
         }

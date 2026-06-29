@@ -18,6 +18,7 @@ import com.arkflame.smpweapons.listener.AbilityItemProtectionListener;
 import com.arkflame.smpweapons.listener.MenuClickListener;
 import com.arkflame.smpweapons.listener.DynamicCommandInterceptListener;
 import com.arkflame.smpweapons.listener.GlideToggleListener;
+import com.arkflame.smpweapons.listener.InventoryPassiveDirtyListener;
 import com.arkflame.smpweapons.listener.TotemPopListener;
 import com.arkflame.smpweapons.listener.WeaponListener;
 import com.arkflame.smpweapons.menu.MenuManager;
@@ -182,10 +183,12 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     private void registerListeners() {
         final AbilityItemProtectionListener protectionListener = new AbilityItemProtectionListener(this);
         getServer().getPluginManager().registerEvents(protectionListener, this);
+        final InventoryPassiveDirtyListener inventoryPassiveDirtyListener = new InventoryPassiveDirtyListener(this);
+        getServer().getPluginManager().registerEvents(inventoryPassiveDirtyListener, this);
         getServer().getPluginManager().registerEvents(new WeaponListener(this), this);
         getServer().getPluginManager().registerEvents(new MenuClickListener(this), this);
         getServer().getPluginManager().registerEvents(new DynamicCommandInterceptListener(this), this);
-        registerAbilityItemSwapListenerIfAvailable(protectionListener);
+        registerAbilityItemSwapListenerIfAvailable(protectionListener, inventoryPassiveDirtyListener);
         registerGlideToggleListenerIfAvailable();
         registerTotemPopListenerIfAvailable();
     }
@@ -207,13 +210,14 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     }
 
     @SuppressWarnings("unchecked")
-    private void registerAbilityItemSwapListenerIfAvailable(final AbilityItemProtectionListener listener) {
+    private void registerAbilityItemSwapListenerIfAvailable(final AbilityItemProtectionListener listener, final InventoryPassiveDirtyListener inventoryPassiveDirtyListener) {
         try {
             final Class<? extends Event> eventClass = (Class<? extends Event>) Class.forName("org.bukkit.event.player.PlayerSwapHandItemsEvent").asSubclass(Event.class);
             getServer().getPluginManager().registerEvent(eventClass, listener, EventPriority.HIGHEST, new EventExecutor() {
                 @Override
                 public void execute(final org.bukkit.event.Listener ignored, final Event event) {
                     listener.handleSwapHandItems(event);
+                    inventoryPassiveDirtyListener.handleSwapHandItems(event);
                 }
             }, this, false);
         } catch (final ClassNotFoundException ignored) {
@@ -268,5 +272,6 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
     public TemporaryBlockService getTemporaryBlockService() { return temporaryBlockService; }
     public ProjectileService getProjectileService() { return projectileService; }
     public ShieldPassiveService getShieldPassiveService() { return shieldPassiveService; }
+    public InventoryPassiveService getInventoryPassiveService() { return inventoryPassiveService; }
     public SMPRegionsHook getSMPRegionsHook() { return smpRegionsHook; }
 }
