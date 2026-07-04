@@ -94,6 +94,8 @@ public final class AbilityEngine {
             cobwebProjectile(player, weapon, section);
         } else if ("FORCE_BOW_DASH".equals(type)) {
             forceBowDash(player, section, 1.0D);
+        } else if ("COMMAND".equals(type) || "COMMANDS".equals(type) || "RUN_COMMAND".equals(type) || "RUN_COMMANDS".equals(type)) {
+            commandAbility(player, weapon, section);
         } else if ("TIMELINE".equals(type)) {
             timeline(player, weapon, section);
         }
@@ -781,16 +783,13 @@ public final class AbilityEngine {
             return;
         }
         if (map.containsKey("command")) {
-            final java.util.Map<Object, Object> data = asMap(map.get("command"));
-            final String value = string(data, "value", string(data, "command", ""));
-            if (!value.trim().isEmpty()) {
-                final String rendered = replacePlaceholders(value, player, weapon);
-                if ("console".equalsIgnoreCase(string(data, "sender", "console"))) {
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), rendered.startsWith("/") ? rendered.substring(1) : rendered);
-                } else {
-                    player.performCommand(rendered.startsWith("/") ? rendered.substring(1) : rendered);
-                }
-            }
+            runCommandAction(player, weapon, asMap(map.get("command")), "console");
+            return;
+        }
+        if (map.containsKey("commands")) {
+            final java.util.Map<Object, Object> data = new java.util.HashMap<Object, Object>();
+            data.put("commands", map.get("commands"));
+            runCommandAction(player, weapon, data, "console");
             return;
         }
         if (map.containsKey("restore_block") || map.containsKey("restore-block")) {
@@ -1247,6 +1246,67 @@ public final class AbilityEngine {
                 pull(player, data, elapsedTicks + periodTicks);
             }
         }, null, periodTicks);
+    }
+
+    private void commandAbility(final Player player, final WeaponDefinition weapon, final ConfigurationSection section) {
+        if (player == null || weapon == null || section == null) {
+            return;
+        }
+        final java.util.Map<Object, Object> data = new java.util.HashMap<Object, Object>();
+        if (section.isList("commands")) {
+            data.put("commands", section.getStringList("commands"));
+        }
+        if (section.isString("command")) {
+            data.put("command", section.getString("command", ""));
+        }
+        data.put("sender", section.getString("sender", section.getString("run-as", "player")));
+        runCommandAction(player, weapon, data, "player");
+    }
+
+    private void runCommandAction(final Player player, final WeaponDefinition weapon, final java.util.Map<Object, Object> data, final String defaultSender) {
+        if (player == null || data == null) {
+            return;
+        }
+        final List<String> commands = stringList(data.get("commands"), string(data, "value", string(data, "command", "")));
+        if (commands.isEmpty()) {
+            return;
+        }
+        final String sender = string(data, "sender", string(data, "run-as", defaultSender == null ? "player" : defaultSender));
+        for (final String rawCommand : commands) {
+            dispatchConfiguredCommand(player, weapon, sender, rawCommand);
+        }
+    }
+
+    private void dispatchConfiguredCommand(final Player player, final WeaponDefinition weapon, final String rawSender, final String rawCommand) {
+        final String rendered = replacePlaceholders(rawCommand, player, weapon);
+        final String command = cleanCommand(rendered);
+        if (command.isEmpty()) {
+            return;
+        }
+        final String sender = rawSender == null ? "player" : rawSender.trim().toLowerCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
+        if ("console".equals(sender) || "server".equals(sender)) {
+            final Runnable dispatch = new Runnable() {
+                @Override
+                public void run() {
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+                }
+            };
+            if (this.scheduler != null) {
+                this.scheduler.runGlobal(dispatch);
+            } else {
+                dispatch.run();
+            }
+            return;
+        }
+        player.performCommand(command);
+    }
+
+    private static String cleanCommand(final String raw) {
+        if (raw == null) {
+            return "";
+        }
+        final String trimmed = raw.trim();
+        return trimmed.startsWith("/") ? trimmed.substring(1).trim() : trimmed;
     }
 
     private void runTimelineStringAction(final Player player, final String action) {

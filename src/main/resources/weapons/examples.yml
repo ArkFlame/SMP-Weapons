@@ -1,5 +1,25 @@
 # Disabled examples for server owners. Copy into custom-weapons.yml and set enabled: true.
 weapons:
+  example_sell_wand:
+    enabled: false
+    display-id: 'example sell wand'
+    item:
+      material: [SUNFLOWER, DOUBLE_PLANT]
+      name: '<gold><bold>Example Sell Wand</bold></gold>'
+      lore:
+        - '<gray>Right click to run /sell all.</gray>'
+    legacy:
+      names-contains: ['Example Sell Wand']
+    trigger:
+      type: RIGHT_CLICK
+      cooldown: 0
+    ability:
+      type: COMMAND
+      sender: player
+      commands:
+        - '/sell all'
+
+
   example_cobweb_bomb_axe:
     enabled: false
     display-id: 'example cobweb bomb axe'

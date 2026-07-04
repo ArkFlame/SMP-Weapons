@@ -286,6 +286,9 @@ public final class WeaponManager {
                 problems.add("duplicate getter command '" + label + "'");
             }
         }
+        if (isCommandAbility(definition) && !hasCommandAbilityCommands(definition.getAbilitySection())) {
+            problems.add("ability COMMAND requires ability.command or ability.commands");
+        }
         if (definition.getTriggerTimeline() != null && definition.getAbilitySection() != null) {
             final ConfigurationSection abilityTimelines = definition.getAbilitySection().getConfigurationSection("timelines");
             final ConfigurationSection rootTimelines = definition.getTimelinesSection();
@@ -335,6 +338,32 @@ public final class WeaponManager {
         if (timeline != null && !timelineExists(definition, timeline)) {
             problems.add(path + ".timeline references missing timeline '" + timeline + "'");
         }
+    }
+
+    private static boolean isCommandAbility(final WeaponDefinition definition) {
+        if (definition == null || definition.getAbilityType() == null) {
+            return false;
+        }
+        final String type = definition.getAbilityType().trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
+        return "COMMAND".equals(type) || "COMMANDS".equals(type) || "RUN_COMMAND".equals(type) || "RUN_COMMANDS".equals(type);
+    }
+
+    private static boolean hasCommandAbilityCommands(final ConfigurationSection ability) {
+        if (ability == null) {
+            return false;
+        }
+        if (ability.isString("command") && !ability.getString("command", "").trim().isEmpty()) {
+            return true;
+        }
+        if (!ability.isList("commands")) {
+            return false;
+        }
+        for (final String command : ability.getStringList("commands")) {
+            if (command != null && !command.trim().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean timelineExists(final WeaponDefinition definition, final String timeline) {

@@ -27,6 +27,7 @@ usage:
   - '<gold>/smpweapons reload</gold> <gray>- reload files'
 region-denied: '<red>You cannot use SMP Weapons in this region.'
 ability-cooldown: '<red>Ability is recharging for <white><seconds>s</white>.'
+prevent-place: '<red>You cannot place this weapon.'
 ability-ready: '<green>Your <weapon> ability is ready.'
 cooldowns-reset: '<green>Cooldowns reset for <white><player></white>.'
 cooldown-reset-one: '<green>Cooldown for <gold><weapon></gold> reset for <white><player></white>.'

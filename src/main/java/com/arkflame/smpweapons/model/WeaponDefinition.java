@@ -23,6 +23,7 @@ public final class WeaponDefinition {
     private final List<String> legacyNamesContains;
     private final List<String> legacyLoreContains;
     private final Integer legacyCustomModelData;
+    private final boolean preventPlace;
     private final List<String> getCommands;
     private final String triggerType;
     private final List<String> triggerEvents;
@@ -73,6 +74,7 @@ public final class WeaponDefinition {
             final String passiveType,
             final ConfigurationSection passiveSection,
             final ConfigurationSection passivesSection,
+            final boolean preventPlace,
             final String sourceFile
     ) {
         this.id = id;
@@ -106,6 +108,7 @@ public final class WeaponDefinition {
         this.passiveType = passiveType;
         this.passiveSection = passiveSection;
         this.passivesSection = passivesSection;
+        this.preventPlace = preventPlace;
         this.sourceFile = sourceFile;
     }
 
@@ -154,6 +157,7 @@ public final class WeaponDefinition {
                 passive == null ? "NONE" : passive.getString("type", "NONE"),
                 passive,
                 section.getConfigurationSection("passives"),
+                section.getBoolean("prevent-place", true),
                 sourceFile
         );
     }
@@ -189,6 +193,7 @@ public final class WeaponDefinition {
     public String getPassiveType() { return passiveType; }
     public ConfigurationSection getPassiveSection() { return passiveSection; }
     public ConfigurationSection getPassivesSection() { return passivesSection; }
+    public boolean isPreventPlace() { return preventPlace; }
     public String getSourceFile() { return sourceFile; }
 
     private static List<String> defaultItemFlags() {

@@ -19,6 +19,7 @@ import com.arkflame.smpweapons.listener.MenuClickListener;
 import com.arkflame.smpweapons.listener.DynamicCommandInterceptListener;
 import com.arkflame.smpweapons.listener.GlideToggleListener;
 import com.arkflame.smpweapons.listener.InventoryPassiveDirtyListener;
+import com.arkflame.smpweapons.listener.PlacePreventionListener;
 import com.arkflame.smpweapons.listener.TotemPopListener;
 import com.arkflame.smpweapons.listener.WeaponListener;
 import com.arkflame.smpweapons.menu.MenuManager;
@@ -188,6 +189,7 @@ public final class SMPWeaponsPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new WeaponListener(this), this);
         getServer().getPluginManager().registerEvents(new MenuClickListener(this), this);
         getServer().getPluginManager().registerEvents(new DynamicCommandInterceptListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlacePreventionListener(this), this);
         registerAbilityItemSwapListenerIfAvailable(protectionListener, inventoryPassiveDirtyListener);
         registerGlideToggleListenerIfAvailable();
         registerTotemPopListenerIfAvailable();
