@@ -11,7 +11,7 @@ mvn clean package
 The compiled plugin jar is created at:
 
 ```text
-target/SMPWeapons-1.1.2.jar
+target/SMPWeapons-1.1.3.jar
 ```
 
 ## Server install
