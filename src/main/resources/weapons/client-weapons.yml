@@ -289,8 +289,102 @@ weapons:
               radius: 7.0
               duration-ticks: 80
               period-ticks: 1
-              speed: 0.42
+              speed: 0.105
               vertical: 0.08
               particle: REVERSE_PORTAL
               particle-count: 6
               players-only: true
+
+  flame_sword:
+    enabled: true
+    override: false
+    display-id: "Flame Sword"
+    item:
+      material: [NETHERITE_SWORD, DIAMOND_SWORD]
+      name: "<gradient:#f97316:#dc2626><bold>Flame Sword</bold></gradient>"
+      lore:
+        - "<gray>Passive: Fire Resistance while in inventory.</gray>"
+        - "<gray>Sneak right click to launch a fireball.</gray>"
+        - "<gray>Impact creates a wave of lava.</gray>"
+      enchants:
+        - "DAMAGE_ALL:5"
+        - "KNOCKBACK:2"
+        - "LOOT_BONUS_MOBS:3"
+        - "SWEEPING_EDGE:3"
+        - "DURABILITY:3"
+        - "MENDING:1"
+        - "FIRE_ASPECT:3"
+      item-flags: [HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+      unbreakable: true
+    legacy:
+      names-contains: ["Flame Sword"]
+    commands:
+      get: ["getflamesword"]
+    cooldowns:
+      primary:
+        seconds: 30
+    triggers:
+      cast:
+        events: [RIGHT_CLICK]
+        conditions: [SNEAKING, MAIN_HAND]
+        cooldown: primary
+        timeline: flame_cast
+    passives:
+      inventory:
+        events: [INVENTORY_TICK]
+        effects:
+          - "FIRE_RESISTANCE:1:5"
+    projectiles:
+      flame_fireball:
+        type: FIREBALL
+        origin: EYE
+        speed: 1.35
+        upward: 0.0
+        lifetime-ticks: 100
+        trail-particle: FLAME
+        remove-on-hit: true
+        cancel-hit-damage: true
+        yield: 0.0
+        incendiary: false
+        on-hit:
+          timeline: flame_impact
+    timelines:
+      flame_cast:
+        "0":
+          - potion: {target: caster, effects: ["STRENGTH:3:6"]}
+          - sound: {target: caster, name: ENTITY_BLAZE_SHOOT}
+          - spawn_projectile: {id: flame_fireball}
+      flame_impact:
+        "0":
+          - sound: {target: impact_location, name: ENTITY_GENERIC_BURN}
+          - particle_shape:
+              origin: impact_location
+              effect: FLAME
+              shape: {type: SPHERE, radius: 2, points: 48}
+          - explosion:
+              origin: impact_location
+              power: 0.0
+              radius: 5.0
+              damage: 6.0
+              raw: false
+              falloff: NONE
+              players-only: true
+              include-caster: false
+              set-fire: false
+              break-blocks: false
+              sound: ""
+              particle: ""
+              knockback: true
+              knockback-strength: 0.35
+              knockback-lift: 0.18
+              knockback-players-only: true
+              knockback-include-caster: false
+          - shape_block_wave:
+              origin: impact_location
+              mode: fake
+              block: LAVA
+              ttl-ticks: 35
+              shape: {type: SPHERE, radius-to: 5, fill: HOLLOW}
+              expand: {every-ticks: 2}
+              collapse: {delay-after-expand-ticks: 6}
+              collision: {real-radius: 0}

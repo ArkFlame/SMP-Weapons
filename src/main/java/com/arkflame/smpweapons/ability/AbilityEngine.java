@@ -2,6 +2,7 @@ package com.arkflame.smpweapons.ability;
 
 import com.arkflame.smpweapons.block.BlockKey;
 import com.arkflame.smpweapons.block.TemporaryBlockService;
+import com.arkflame.smpweapons.hook.RegionProtectionService;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.projectile.ProjectileService;
 import com.arkflame.smpweapons.util.Entities;
@@ -13,7 +14,6 @@ import com.arkflame.smpweapons.util.Sounds;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
@@ -42,11 +42,12 @@ public final class AbilityEngine {
     private final TemporaryBlockService temporaryBlocks;
     private final ProjectileService projectileService;
     private final GlideService glideService;
+    private final RegionProtectionService regionProtection;
     private final int maxAirLoopTicks;
     private final int maxTargetDistance;
     private final Map<String, Set<UUID>> damageOnceMemory = new HashMap<String, Set<UUID>>();
 
-    public AbilityEngine(final JavaPlugin plugin, final FoliaAPI scheduler, final FallProtectionService fallProtection, final CooldownService cooldowns, final TemporaryBlockService temporaryBlocks, final ProjectileService projectileService, final GlideService glideService, final int maxAirLoopTicks, final int maxTargetDistance) {
+    public AbilityEngine(final JavaPlugin plugin, final FoliaAPI scheduler, final FallProtectionService fallProtection, final CooldownService cooldowns, final TemporaryBlockService temporaryBlocks, final ProjectileService projectileService, final GlideService glideService, final RegionProtectionService regionProtection, final int maxAirLoopTicks, final int maxTargetDistance) {
         this.plugin = plugin;
         this.scheduler = scheduler;
         this.fallProtection = fallProtection;
@@ -54,12 +55,13 @@ public final class AbilityEngine {
         this.temporaryBlocks = temporaryBlocks;
         this.projectileService = projectileService;
         this.glideService = glideService;
+        this.regionProtection = regionProtection;
         this.maxAirLoopTicks = Math.max(20, maxAirLoopTicks);
         this.maxTargetDistance = Math.max(4, maxTargetDistance);
     }
 
     public void execute(final Player player, final WeaponDefinition weapon) {
-        if (player == null || weapon == null) {
+        if (player == null || weapon == null || !canUseAbility(player)) {
             return;
         }
         if (weapon.getTriggersSection() == null && weapon.getTriggerTimeline() != null && !weapon.getTriggerTimeline().trim().isEmpty()) {
@@ -102,7 +104,7 @@ public final class AbilityEngine {
     }
 
     public void executeShoot(final Player player, final WeaponDefinition weapon, final double force, final Entity projectile) {
-        if (player == null || weapon == null) {
+        if (player == null || weapon == null || !canUseAbility(player)) {
             return;
         }
         final String type = weapon.getAbilityType() == null ? "NONE" : weapon.getAbilityType().toUpperCase(Locale.ROOT);
@@ -125,7 +127,7 @@ public final class AbilityEngine {
     }
 
     public void executePassive(final Player attacker, final LivingEntity victim, final WeaponDefinition weapon) {
-        if (attacker == null || victim == null || weapon == null) {
+        if (attacker == null || victim == null || weapon == null || !canUseAbility(attacker) || !canAffect(attacker, victim)) {
             return;
         }
         runLegacyPassive(attacker, victim, weapon);
@@ -142,12 +144,14 @@ public final class AbilityEngine {
         }
         final String type = weapon.getPassiveType() == null ? "NONE" : weapon.getPassiveType().toUpperCase(Locale.ROOT);
         if ("HIT_EFFECT".equals(type)) {
-            for (final String effect : passive.getStringList("effects")) {
-                PotionEffects.apply(victim, effect);
+            if (canAffect(attacker, victim)) {
+                for (final String effect : passive.getStringList("effects")) {
+                    PotionEffects.apply(victim, effect);
+                }
             }
         } else if ("COBWEB_ON_HIT".equals(type)) {
             final Material cobweb = Materials.find("COBWEB").orElse(Material.getMaterial("WEB"));
-            if (cobweb != null) {
+            if (cobweb != null && canWorldEffect(attacker, victim.getLocation())) {
                 this.temporaryBlocks.placeReal(victim.getLocation(), cobweb, passive.getInt("duration", 5) * 20L);
             }
         }
@@ -171,13 +175,15 @@ public final class AbilityEngine {
                 timeline(attacker, weapon, timeline.trim(), new AbilityContext(victim.getLocation(), victim, null));
                 continue;
             }
-            for (final String effect : passive.getStringList("effects")) {
-                PotionEffects.apply(victim, effect);
+            if (canAffect(attacker, victim)) {
+                for (final String effect : passive.getStringList("effects")) {
+                    PotionEffects.apply(victim, effect);
+                }
             }
             if (passive.isConfigurationSection("temporary-block")) {
                 final ConfigurationSection block = passive.getConfigurationSection("temporary-block");
                 final Material material = Materials.find(block.getString("block", "COBWEB")).orElse(Material.getMaterial("WEB"));
-                if (material != null) {
+                if (material != null && canWorldEffect(attacker, victim.getLocation())) {
                     this.temporaryBlocks.placeTemporary(victim.getLocation(), material, block.getLong("ttl-ticks", block.getInt("duration", 5) * 20L), block.getString("mode", "real"));
                 }
             }
@@ -232,6 +238,9 @@ public final class AbilityEngine {
     }
 
     private void dashAoe(final Player player, final ConfigurationSection section) {
+        if (!canUseAbility(player)) {
+            return;
+        }
         final double upward = getDouble(section, "upward", 0.5D);
         final double forward = getDouble(section, "forward", 2.0D);
         final double burstRadius = getDouble(section, "burst-radius", 3.0D);
@@ -246,6 +255,9 @@ public final class AbilityEngine {
         scheduler.runEntityLater(player, new Runnable() {
             @Override
             public void run() {
+                if (!canUseAbility(player)) {
+                    return;
+                }
                 Entities.pushForward(player, forward);
                 for (final String sound : sounds) {
                     Sounds.play(player.getLocation(), sound, 1.0F, 1.0F);
@@ -257,6 +269,9 @@ public final class AbilityEngine {
     }
 
     private void venomDash(final Player player, final ConfigurationSection section) {
+        if (!canUseAbility(player)) {
+            return;
+        }
         final double upward = getDouble(section, "upward", 0.5D);
         final double forward = getDouble(section, "forward", 2.2D);
         final double radius = getDouble(section, "radius", 5.0D);
@@ -269,6 +284,9 @@ public final class AbilityEngine {
         scheduler.runEntityLater(player, new Runnable() {
             @Override
             public void run() {
+                if (!canUseAbility(player)) {
+                    return;
+                }
                 Entities.pushForward(player, forward);
                 Sounds.play(player.getLocation(), "ENTITY_BREEZE_CHARGE", 1.0F, 1.0F);
                 Sounds.play(player.getLocation(), "ENTITY_WIND_CHARGE_WIND_BURST", 1.0F, 1.0F);
@@ -290,27 +308,35 @@ public final class AbilityEngine {
         }
         drawLine(player.getEyeLocation(), target, "WHITE_DUST");
         Sounds.play(target, "ENTITY_SPIDER_DEATH", 1.0F, 1.0F);
-        this.temporaryBlocks.waveSphere(target, cobweb, radius, duration, mode, realRadius, 2L, getInt(section, "collapse-delay-ticks", 2));
+        if (canWorldEffect(player, target)) {
+            this.temporaryBlocks.waveSphere(target, cobweb, radius, duration, mode, realRadius, 2L, getInt(section, "collapse-delay-ticks", 2));
+        }
     }
 
     private void selfBuff(final Player player, final ConfigurationSection section) {
-        if (section == null) {
+        if (section == null || !canUseAbility(player)) {
             return;
         }
         for (final String sound : section.getStringList("sounds")) {
             Sounds.play(player.getLocation(), sound, 1.0F, 1.0F);
         }
         for (final String effect : section.getStringList("effects")) {
-            PotionEffects.apply(player, effect);
+            if (canUseAbility(player)) {
+                PotionEffects.apply(player, effect);
+            }
         }
         final boolean glowing = section.getBoolean("glowing", false);
         final int duration = section.getInt("duration", 6);
         if (glowing) {
-            Entities.setGlowing(player, true);
+            if (canUseAbility(player)) {
+                Entities.setGlowing(player, true);
+            }
             scheduler.runEntityLater(player, new Runnable() {
                 @Override
                 public void run() {
-                    Entities.setGlowing(player, false);
+                    if (canUseAbility(player)) {
+                        Entities.setGlowing(player, false);
+                    }
                 }
             }, null, Math.max(1L, duration * 20L));
         }
@@ -323,7 +349,9 @@ public final class AbilityEngine {
         final List<LivingEntity> victims = livingNearby(player, radius);
         for (final LivingEntity victim : victims) {
             for (final String effect : section.getStringList("effects")) {
-                PotionEffects.apply(victim, effect);
+                if (canAffect(player, victim)) {
+                    PotionEffects.apply(victim, effect);
+                }
             }
         }
         ring(player.getLocation(), particle, 15, 1);
@@ -333,6 +361,9 @@ public final class AbilityEngine {
     }
 
     private void rocketLift(final Player player, final ConfigurationSection section) {
+        if (!canUseAbility(player)) {
+            return;
+        }
         final double upward = getDouble(section, "upward", 2.0D);
         final double forward = getDouble(section, "forward", 1.0D);
         final int duration = getInt(section, "duration", 3);
@@ -348,6 +379,9 @@ public final class AbilityEngine {
     }
 
     private void slamMace(final Player player, final ConfigurationSection section) {
+        if (!canUseAbility(player)) {
+            return;
+        }
         final double upward = getDouble(section, "upward", 1.6D);
         final double downward = getDouble(section, "downward", 3.0D);
         final int clearRadius = getInt(section, "clear-web-radius", 7);
@@ -356,13 +390,18 @@ public final class AbilityEngine {
         scheduler.runEntityLater(player, new Runnable() {
             @Override
             public void run() {
+                if (!canUseAbility(player)) {
+                    return;
+                }
                 Entities.push(player, 0.0D, -downward, 0.0D);
                 waitForGround(player, new Runnable() {
                     @Override
                     public void run() {
                         Sounds.play(player.getLocation(), "ENTITY_GENERIC_EXPLODE", 1.0F, 1.0F);
                         Particles.spawn(player.getLocation(), "EXPLOSION", 30);
-                        clearCobwebs(player.getLocation(), clearRadius);
+                        if (canWorldEffect(player, player.getLocation())) {
+                            clearCobwebs(player.getLocation(), clearRadius);
+                        }
                     }
                 }, 0, 100);
             }
@@ -370,6 +409,9 @@ public final class AbilityEngine {
     }
 
     private void zoomMace(final Player player, final ConfigurationSection section) {
+        if (!canUseAbility(player)) {
+            return;
+        }
         final double upward = getDouble(section, "upward", 5.0D);
         final double downward = getDouble(section, "downward", 4.0D);
         final double radius = getDouble(section, "radius", 6.0D);
@@ -380,6 +422,9 @@ public final class AbilityEngine {
         scheduler.runEntityLater(player, new Runnable() {
             @Override
             public void run() {
+                if (!canUseAbility(player)) {
+                    return;
+                }
                 Entities.push(player, 0.0D, -downward, 0.0D);
                 waitForGround(player, new Runnable() {
                     @Override
@@ -387,7 +432,9 @@ public final class AbilityEngine {
                         Sounds.play(player.getLocation(), "ENTITY_GENERIC_EXPLODE", 1.0F, 1.0F);
                         Sounds.play(player.getLocation(), "ENTITY_IRON_GOLEM_DEATH", 1.0F, 1.0F);
                         for (final LivingEntity entity : livingNearby(player, radius)) {
-                            entity.damage(damage, player);
+                            if (canAffect(player, entity)) {
+                                entity.damage(damage, player);
+                            }
                             Particles.spawn(entity.getLocation(), "CRIT", 10);
                         }
                         scheduler.runEntityLater(player, new Runnable() {
@@ -408,11 +455,15 @@ public final class AbilityEngine {
         final String effect = getString(section, "effect", "WITHER:1:5");
         for (final LivingEntity entity : livingNearby(player, radius)) {
             if (entity instanceof Player) {
-                PotionEffects.apply(entity, effect);
+                if (canAffect(player, entity)) {
+                    PotionEffects.apply(entity, effect);
+                }
             }
         }
         Sounds.play(player, "ENTITY_DOLPHIN_SPLASH", 1.0F, 1.0F);
-        Entities.pushForward(player, forward);
+        if (canUseAbility(player)) {
+            Entities.pushForward(player, forward);
+        }
         waterTrail(player, 20, 0);
     }
 
@@ -423,12 +474,16 @@ public final class AbilityEngine {
         Sounds.play(player, "ENTITY_ENDER_DRAGON_GROWL", 1.0F, 1.0F);
         Particles.spawn(player.getLocation(), "LAVA", 40);
         for (final String effect : section.getStringList("effects")) {
-            PotionEffects.apply(player, effect);
+            if (canUseAbility(player)) {
+                PotionEffects.apply(player, effect);
+            }
         }
         for (final LivingEntity entity : livingNearby(player, section.getDouble("radius", 5.0D))) {
             if (entity instanceof Player) {
                 for (final String effect : section.getStringList("victim-effects")) {
-                    PotionEffects.apply(entity, effect);
+                    if (canAffect(player, entity)) {
+                        PotionEffects.apply(entity, effect);
+                    }
                 }
                 Sounds.play(entity.getLocation(), "ENTITY_SHULKER_SHOOT", 1.0F, 1.0F);
             }
@@ -437,8 +492,10 @@ public final class AbilityEngine {
 
     private void flowSpear(final Player player, final ConfigurationSection section) {
         Sounds.play(player, "ENTITY_PLAYER_ATTACK_SWEEP", 1.0F, 1.0F);
-        Entities.push(player, 0.0D, getDouble(section, "upward", 0.4D), 0.0D);
-        Entities.pushForward(player, getDouble(section, "forward", 4.0D));
+        if (canUseAbility(player)) {
+            Entities.push(player, 0.0D, getDouble(section, "upward", 0.4D), 0.0D);
+            Entities.pushForward(player, getDouble(section, "forward", 4.0D));
+        }
     }
 
     private void forceBowDash(final Player player, final ConfigurationSection section, final double force) {
@@ -461,7 +518,7 @@ public final class AbilityEngine {
         this.scheduler.runEntityLater(player, new Runnable() {
             @Override
             public void run() {
-                if (!player.isOnline()) {
+                if (!player.isOnline() || !canUseAbility(player)) {
                     return;
                 }
                 player.setVelocity(player.getVelocity().add(dashVector));
@@ -493,16 +550,17 @@ public final class AbilityEngine {
     }
 
     private void cobwebProjectile(final Player player, final WeaponDefinition weapon, final ConfigurationSection section) {
-        if (this.projectileService != null) {
+        if (this.projectileService != null && canWorldEffect(player, player.getEyeLocation())) {
             this.projectileService.launchCobwebBomb(player, weapon, section);
         }
     }
 
     public void executeNamedTimeline(final Player player, final WeaponDefinition weapon, final String timelineName, final Location impactLocation, final LivingEntity hitEntity, final Entity projectile) {
-        if (player == null || weapon == null || timelineName == null || timelineName.trim().isEmpty()) {
+        final AbilityContext context = new AbilityContext(impactLocation, hitEntity, projectile);
+        if (player == null || weapon == null || timelineName == null || timelineName.trim().isEmpty() || !timelineContextAllowed(player, context)) {
             return;
         }
-        timeline(player, weapon, timelineName.trim(), new AbilityContext(impactLocation, hitEntity, projectile));
+        timeline(player, weapon, timelineName.trim(), context);
     }
 
     private void timeline(final Player player, final WeaponDefinition weapon, final String timelineName) {
@@ -569,11 +627,12 @@ public final class AbilityEngine {
                 scheduler.runEntityLater(player, new Runnable() {
                     @Override
                     public void run() {
-                        if (!player.isOnline()) {
-                            return;
-                        }
                         for (final Object action : actions) {
-                            runTimelineAction(player, weapon, section, action, context == null ? AbilityContext.empty() : context);
+                            final AbilityContext actionContext = context == null ? AbilityContext.empty() : context;
+                            if (!player.isOnline() || !timelineContextAllowed(player, actionContext)) {
+                                return;
+                            }
+                            runTimelineAction(player, weapon, section, action, actionContext);
                         }
                     }
                 }, null, Math.max(0L, delay));
@@ -632,6 +691,9 @@ public final class AbilityEngine {
             final List<LivingEntity> targets = resolveTargets(player, data, "caster", context);
             final String mode = string(data, "mode", "ADD").toUpperCase(Locale.ROOT).replace('-', '_');
             for (final LivingEntity target : targets) {
+                if (!canAffect(player, target)) {
+                    continue;
+                }
                 if ("LOOK".equals(mode) && target instanceof Player) {
                     Entities.pushForward((Player) target, number(data, "forward", 1.0D));
                     final double upward = number(data, "upward", 0.0D);
@@ -666,13 +728,19 @@ public final class AbilityEngine {
                 if (target == player && !Boolean.valueOf(string(data, "include-caster", "false")).booleanValue()) {
                     continue;
                 }
-                if (damageOnce && remembered != null && !remembered.add(target.getUniqueId())) {
+                if (!canAffect(player, target)) {
+                    continue;
+                }
+                if (damageOnce && remembered != null && remembered.contains(target.getUniqueId())) {
                     continue;
                 }
                 if (raw) {
                     Entities.rawDamage(target, amount);
                 } else {
                     target.damage(amount, player);
+                }
+                if (damageOnce && remembered != null) {
+                    remembered.add(target.getUniqueId());
                 }
             }
             return;
@@ -682,6 +750,9 @@ public final class AbilityEngine {
             final Object effects = data.get("effects");
             final List<LivingEntity> targets = resolveTargets(player, data, "caster", context);
             for (final LivingEntity target : targets) {
+                if (!canAffect(player, target)) {
+                    continue;
+                }
                 if (effects instanceof java.util.List) {
                     for (final Object effect : (java.util.List<?>) effects) {
                         PotionEffects.apply(target, String.valueOf(effect));
@@ -697,6 +768,9 @@ public final class AbilityEngine {
             final Object rawEffects = data.get("effects");
             final List<String> effects = stringList(rawEffects, string(data, "effect", ""));
             for (final LivingEntity target : resolveTargets(player, data, "caster", context)) {
+                if (!canAffect(player, target)) {
+                    continue;
+                }
                 for (final String effect : effects) {
                     final java.util.Optional<PotionEffectType> type = PotionEffects.resolve(effect);
                     if (type.isPresent()) {
@@ -719,7 +793,7 @@ public final class AbilityEngine {
             final java.util.Map<Object, Object> data = asMap(map.get("gliding"));
             final boolean enabled = Boolean.valueOf(String.valueOf(data.containsKey("enabled") ? data.get("enabled") : "true")).booleanValue();
             for (final LivingEntity target : resolveTargets(player, data, "caster", context)) {
-                if (target instanceof Player) {
+                if (target instanceof Player && canAffect(player, target)) {
                     Entities.setGliding((Player) target, enabled);
                 }
             }
@@ -729,7 +803,9 @@ public final class AbilityEngine {
             final java.util.Map<Object, Object> data = asMap(map.get("glowing"));
             final boolean enabled = Boolean.valueOf(String.valueOf(data.containsKey("enabled") ? data.get("enabled") : "true")).booleanValue();
             for (final LivingEntity target : resolveTargets(player, data, "caster", context)) {
-                Entities.setGlowing(target, enabled);
+                if (canAffect(player, target)) {
+                    Entities.setGlowing(target, enabled);
+                }
             }
             return;
         }
@@ -738,11 +814,15 @@ public final class AbilityEngine {
             final Material material = Materials.find(string(data, "block", "COBWEB")).orElse(Material.getMaterial("WEB"));
             if (material != null) {
                 final java.util.Map<Object, Object> shape = asMap(data.get("shape"));
+                final Location origin = resolveOrigin(player, data.get("origin"), context);
+                if (!canWorldEffect(player, origin)) {
+                    return;
+                }
                 if (!shape.isEmpty()) {
                     final String fill = string(shape, "fill", "SOLID").toUpperCase(Locale.ROOT);
-                    this.temporaryBlocks.placeShape(resolveOrigin(player, data.get("origin"), context), material, string(shape, "type", "SPHERE"), integer(shape, "radius", integer(shape, "radius-to", 3)), integer(shape, "height", 3), "HOLLOW".equals(fill) || "SURFACE".equals(fill) || "OUTLINE".equals(fill), integer(data, "ttl-ticks", 40), string(data, "mode", "real"));
+                    this.temporaryBlocks.placeShape(origin, material, string(shape, "type", "SPHERE"), integer(shape, "radius", integer(shape, "radius-to", 3)), integer(shape, "height", 3), "HOLLOW".equals(fill) || "SURFACE".equals(fill) || "OUTLINE".equals(fill), integer(data, "ttl-ticks", 40), string(data, "mode", "real"));
                 } else {
-                    this.temporaryBlocks.placeTemporary(resolveOrigin(player, data.get("origin"), context), material, integer(data, "ttl-ticks", 40), string(data, "mode", "real"));
+                    this.temporaryBlocks.placeTemporary(origin, material, integer(data, "ttl-ticks", 40), string(data, "mode", "real"));
                 }
             }
             return;
@@ -752,11 +832,15 @@ public final class AbilityEngine {
             final Material material = Materials.find(string(data, "block", "COBWEB")).orElse(Material.getMaterial("WEB"));
             if (material != null) {
                 final java.util.Map<Object, Object> shape = asMap(data.get("shape"));
+                final Location origin = resolveOrigin(player, data.get("origin"), context);
+                if (!canWorldEffect(player, origin)) {
+                    return;
+                }
                 if (!shape.isEmpty()) {
                     final String fill = string(shape, "fill", "SOLID").toUpperCase(Locale.ROOT);
-                    this.temporaryBlocks.placeShape(resolveOrigin(player, data.get("origin"), context), material, string(shape, "type", "SPHERE"), integer(shape, "radius", integer(shape, "radius-to", 3)), integer(shape, "height", 3), "HOLLOW".equals(fill) || "SURFACE".equals(fill) || "OUTLINE".equals(fill), integer(data, "ttl-ticks", 40), "fake");
+                    this.temporaryBlocks.placeShape(origin, material, string(shape, "type", "SPHERE"), integer(shape, "radius", integer(shape, "radius-to", 3)), integer(shape, "height", 3), "HOLLOW".equals(fill) || "SURFACE".equals(fill) || "OUTLINE".equals(fill), integer(data, "ttl-ticks", 40), "fake");
                 } else {
-                    this.temporaryBlocks.placeTemporary(resolveOrigin(player, data.get("origin"), context), material, integer(data, "ttl-ticks", 40), "fake");
+                    this.temporaryBlocks.placeTemporary(origin, material, integer(data, "ttl-ticks", 40), "fake");
                 }
             }
             return;
@@ -764,14 +848,18 @@ public final class AbilityEngine {
         if (map.containsKey("shape_block_wave")) {
             final java.util.Map<Object, Object> data = asMap(map.get("shape_block_wave"));
             final Material material = Materials.find(string(data, "block", "COBWEB")).orElse(Material.getMaterial("WEB"));
-            if (material != null) {
-                this.temporaryBlocks.waveSphere(resolveOrigin(player, data.get("origin"), context), material, integer(data, "radius", integer(asMap(data.get("shape")), "radius-to", 3)), integer(data, "ttl-ticks", 40), string(data, "mode", "hybrid"), integer(asMap(data.get("collision")), "real-radius", 1), integer(asMap(data.get("expand")), "every-ticks", 2), integer(asMap(data.get("collapse")), "delay-after-expand-ticks", 4));
+            final Location origin = resolveOrigin(player, data.get("origin"), context);
+            if (material != null && canWorldEffect(player, origin)) {
+                this.temporaryBlocks.waveSphere(origin, material, integer(data, "radius", integer(asMap(data.get("shape")), "radius-to", 3)), integer(data, "ttl-ticks", 40), string(data, "mode", "hybrid"), integer(asMap(data.get("collision")), "real-radius", 1), integer(asMap(data.get("expand")), "every-ticks", 2), integer(asMap(data.get("collapse")), "delay-after-expand-ticks", 4));
             }
             return;
         }
         if (map.containsKey("clear_blocks")) {
             final java.util.Map<Object, Object> data = asMap(map.get("clear_blocks"));
-            clearCobwebs(resolveOrigin(player, data.get("origin"), context), integer(data, "radius", 5));
+            final Location origin = resolveOrigin(player, data.get("origin"), context);
+            if (canWorldEffect(player, origin)) {
+                clearCobwebs(origin, integer(data, "radius", 5));
+            }
             return;
         }
         if (map.containsKey("message") || map.containsKey("actionbar") || map.containsKey("title")) {
@@ -794,12 +882,18 @@ public final class AbilityEngine {
         }
         if (map.containsKey("restore_block") || map.containsKey("restore-block")) {
             final java.util.Map<Object, Object> data = asMap(map.containsKey("restore_block") ? map.get("restore_block") : map.get("restore-block"));
-            this.temporaryBlocks.restore(BlockKey.from(resolveOrigin(player, data.get("origin"), context)));
+            final Location origin = resolveOrigin(player, data.get("origin"), context);
+            if (canWorldEffect(player, origin)) {
+                this.temporaryBlocks.restore(BlockKey.from(origin));
+            }
             return;
         }
         if (map.containsKey("sync_block") || map.containsKey("sync-block")) {
             final java.util.Map<Object, Object> data = asMap(map.containsKey("sync_block") ? map.get("sync_block") : map.get("sync-block"));
-            this.temporaryBlocks.syncBlock(player, resolveOrigin(player, data.get("origin"), context));
+            final Location origin = resolveOrigin(player, data.get("origin"), context);
+            if (canWorldEffect(player, origin)) {
+                this.temporaryBlocks.syncBlock(player, origin);
+            }
             return;
         }
         if (map.containsKey("cooldown_reset") || map.containsKey("cooldown-reset")) {
@@ -822,7 +916,9 @@ public final class AbilityEngine {
         }
         if (map.containsKey("spawn_projectile") && this.projectileService != null) {
             final java.util.Map<Object, Object> data = asMap(map.get("spawn_projectile"));
-            this.projectileService.launchConfigured(player, weapon, section, string(data, "id", "cobweb_bomb"));
+            if (canWorldEffect(player, player.getEyeLocation())) {
+                this.projectileService.launchConfigured(player, weapon, section, string(data, "id", "cobweb_bomb"));
+            }
         }
     }
 
@@ -844,6 +940,9 @@ public final class AbilityEngine {
         if (origin.getWorld() == null) {
             return;
         }
+        if (!canWorldEffect(player, origin)) {
+            return;
+        }
         final Location finalOrigin = origin.clone();
         final Runnable explosionBody = new Runnable() {
             @Override
@@ -859,7 +958,7 @@ public final class AbilityEngine {
     }
 
     private void runExplosion(final Player player, final java.util.Map<Object, Object> data, final Location origin) {
-        if (player == null || origin == null || origin.getWorld() == null) {
+        if (player == null || origin == null || origin.getWorld() == null || !canWorldEffect(player, origin)) {
             return;
         }
         final float power = (float) Math.max(0.0D, Math.min(8.0D, number(data, "power", number(data, "explosion-power", 2.0D))));
@@ -907,7 +1006,7 @@ public final class AbilityEngine {
                     if (distance > radius) {
                         continue;
                     }
-                    applyExplosionKnockback((LivingEntity) nearby, origin, knockbackStrength, knockbackLift);
+                    applyExplosionKnockback(player, (LivingEntity) nearby, origin, knockbackStrength, knockbackLift);
                 }
             }
         }
@@ -948,7 +1047,7 @@ public final class AbilityEngine {
                     if (!includeCaster && target.getUniqueId().equals(source.getUniqueId())) {
                         continue;
                     }
-                    schedulePlayerKnockback(target, snapshotOrigin.clone(), radius, horizontal, lift);
+                    schedulePlayerKnockback(source, target, snapshotOrigin.clone(), radius, horizontal, lift);
                 }
             }
         };
@@ -959,11 +1058,14 @@ public final class AbilityEngine {
         }
     }
 
-    private void schedulePlayerKnockback(final Player target, final Location origin, final double radius, final double horizontal, final double lift) {
+    private void schedulePlayerKnockback(final Player source, final Player target, final Location origin, final double radius, final double horizontal, final double lift) {
         final Runnable task = new Runnable() {
             @Override
             public void run() {
                 if (target == null || !target.isOnline() || target.isDead() || target.getWorld() == null || origin == null || origin.getWorld() == null) {
+                    return;
+                }
+                if (!canAffect(source, target)) {
                     return;
                 }
                 if (!target.getWorld().equals(origin.getWorld())) {
@@ -983,14 +1085,14 @@ public final class AbilityEngine {
         }
     }
 
-    private void applyExplosionKnockback(final LivingEntity target, final Location origin, final double horizontal, final double lift) {
-        if (target == null || origin == null || target.isDead()) {
+    private void applyExplosionKnockback(final Player source, final LivingEntity target, final Location origin, final double horizontal, final double lift) {
+        if (target == null || origin == null || target.isDead() || !canAffect(source, target)) {
             return;
         }
         final Runnable task = new Runnable() {
             @Override
             public void run() {
-                if (target == null || target.isDead()) {
+                if (target == null || target.isDead() || !canAffect(source, target)) {
                     return;
                 }
                 Entities.pushAwayWithLift(target, origin, horizontal, lift);
@@ -1042,6 +1144,9 @@ public final class AbilityEngine {
             @Override
             public void run() {
                 if (target == null || !target.isOnline() || target.isDead() || target.getWorld() == null || origin == null || origin.getWorld() == null) {
+                    return;
+                }
+                if (!canAffect(source, target)) {
                     return;
                 }
                 if (!target.getWorld().equals(origin.getWorld())) {
@@ -1122,13 +1227,13 @@ public final class AbilityEngine {
     }
 
     private void applyExplosionDamage(final Player source, final LivingEntity target, final double amount, final boolean rawDamage) {
-        if (target == null || amount <= 0.0D) {
+        if (target == null || amount <= 0.0D || !canAffect(source, target)) {
             return;
         }
         final Runnable damageTask = new Runnable() {
             @Override
             public void run() {
-                if (target.isDead()) {
+                if (target.isDead() || !canAffect(source, target)) {
                     return;
                 }
                 if (rawDamage) {
@@ -1146,6 +1251,9 @@ public final class AbilityEngine {
     }
 
     private void beam(final Player player, final java.util.Map<Object, Object> data) {
+        if (!canUseAbility(player)) {
+            return;
+        }
         final Location origin = player.getEyeLocation();
         final Vector direction = origin.getDirection();
         if (direction.lengthSquared() <= 0.000001D) {
@@ -1186,14 +1294,18 @@ public final class AbilityEngine {
             }
             if (hit != null) {
                 if (damage > 0.0D) {
-                    if (rawDamage) {
-                        Entities.rawDamage(hit, damage);
-                    } else {
-                        hit.damage(damage, player);
+                    if (canAffect(player, hit)) {
+                        if (rawDamage) {
+                            Entities.rawDamage(hit, damage);
+                        } else {
+                            hit.damage(damage, player);
+                        }
                     }
                 }
                 for (final String effect : stringList(data.get("hit-effects"), "")) {
-                    PotionEffects.apply(hit, effect);
+                    if (canAffect(player, hit)) {
+                        PotionEffects.apply(hit, effect);
+                    }
                 }
                 return;
             }
@@ -1201,7 +1313,7 @@ public final class AbilityEngine {
     }
 
     private void pull(final Player player, final java.util.Map<Object, Object> data, final int elapsedTicks) {
-        if (player == null || !player.isOnline()) {
+        if (player == null || !player.isOnline() || !canUseAbility(player)) {
             return;
         }
         final int durationTicks = Math.max(0, integer(data, "duration-ticks", 80));
@@ -1237,7 +1349,9 @@ public final class AbilityEngine {
                 continue;
             }
             vector.normalize().multiply(speed).setY(vertical);
-            entity.setVelocity(entity.getVelocity().add(vector));
+            if (canAffect(player, (LivingEntity) entity)) {
+                entity.setVelocity(entity.getVelocity().add(vector));
+            }
             Particles.spawn(entity.getLocation().add(0.0D, 1.0D, 0.0D), particle, particleCount);
         }
         this.scheduler.runEntityLater(player, new Runnable() {
@@ -1323,19 +1437,25 @@ public final class AbilityEngine {
         } else if ("PARTICLE".equals(type) && parts.length >= 2) {
             Particles.spawn(player.getLocation(), parts[1], parts.length >= 3 ? parseInt(parts[2], 1) : 1);
         } else if ("VELOCITY_LOOK".equals(type) && parts.length >= 2) {
-            Entities.pushForward(player, parseDouble(parts[1], 1.0D));
+            if (canUseAbility(player)) {
+                Entities.pushForward(player, parseDouble(parts[1], 1.0D));
+            }
         } else if ("VELOCITY_Y".equals(type) && parts.length >= 2) {
-            Entities.push(player, 0.0D, parseDouble(parts[1], 0.0D), 0.0D);
+            if (canUseAbility(player)) {
+                Entities.push(player, 0.0D, parseDouble(parts[1], 0.0D), 0.0D);
+            }
         } else if ("POTION".equals(type) && parts.length >= 4) {
-            PotionEffects.apply(player, parts[1], parseInt(parts[2], 1), parseInt(parts[3], 1));
+            if (canUseAbility(player)) {
+                PotionEffects.apply(player, parts[1], parseInt(parts[2], 1), parseInt(parts[3], 1));
+            }
         } else if ("TEMP_BLOCK".equals(type) && parts.length >= 3) {
             final Material material = Materials.find(parts[1]).orElse(Material.getMaterial("WEB"));
-            if (material != null) {
+            if (material != null && canWorldEffect(player, player.getLocation())) {
                 this.temporaryBlocks.placeTemporary(player.getLocation(), material, parseInt(parts[2], 40), parts.length >= 4 ? parts[3] : "real");
             }
         } else if ("SHAPE_WAVE".equals(type) && parts.length >= 4) {
             final Material material = Materials.find(parts[1]).orElse(Material.getMaterial("WEB"));
-            if (material != null) {
+            if (material != null && canWorldEffect(player, targetLocation(player, this.maxTargetDistance))) {
                 this.temporaryBlocks.waveSphere(targetLocation(player, this.maxTargetDistance), material, parseInt(parts[2], 3), parseInt(parts[3], 40), parts.length >= 5 ? parts[4] : "hybrid", 1, 2L, 4L);
             }
         }
@@ -1404,7 +1524,7 @@ public final class AbilityEngine {
     }
 
     private void airTrailTick(final Player player, final double radius, final double pushSpeed, final double damage, final String particle, final Set<UUID> damaged, final boolean clearNoFallOnGround, final int tick) {
-        if (!player.isOnline() || tick >= this.maxAirLoopTicks || player.isOnGround()) {
+        if (!player.isOnline() || tick >= this.maxAirLoopTicks || player.isOnGround() || !canUseAbility(player)) {
             if (clearNoFallOnGround) {
                 scheduler.runEntityLater(player, new Runnable() {
                     @Override
@@ -1426,7 +1546,7 @@ public final class AbilityEngine {
     }
 
     private void venomTrail(final Player player, final double radius, final int poison, final int weakness, final int duration, final Set<UUID> affected, final int tick) {
-        if (!player.isOnline() || tick >= this.maxAirLoopTicks || player.isOnGround()) {
+        if (!player.isOnline() || tick >= this.maxAirLoopTicks || player.isOnGround() || !canUseAbility(player)) {
             scheduler.runEntityLater(player, new Runnable() {
                 @Override
                 public void run() {
@@ -1437,7 +1557,7 @@ public final class AbilityEngine {
         }
         Particles.spawn(player.getLocation().add(0.0D, 1.0D, 0.0D), "GREEN_DUST", 4);
         for (final LivingEntity entity : livingNearby(player, radius)) {
-            if (affected.add(entity.getUniqueId())) {
+            if (canAffect(player, entity) && affected.add(entity.getUniqueId())) {
                 PotionEffects.apply(entity, "POISON", poison, duration);
                 PotionEffects.apply(entity, "WEAKNESS", weakness, duration);
                 drawLine(player.getEyeLocation(), entity.getLocation().add(0.0D, 1.0D, 0.0D), "BLACK_DUST");
@@ -1453,7 +1573,7 @@ public final class AbilityEngine {
 
     private void burstDamage(final Player player, final double radius, final double pushSpeed, final double damage, final Set<UUID> damaged) {
         for (final LivingEntity entity : livingNearby(player, radius)) {
-            if (damaged.add(entity.getUniqueId())) {
+            if (canAffect(player, entity) && damaged.add(entity.getUniqueId())) {
                 Entities.rawDamage(entity, damage);
                 Entities.pushAway(entity, player.getLocation(), pushSpeed);
             }
@@ -1505,12 +1625,14 @@ public final class AbilityEngine {
     }
 
     private void rocketTrail(final Player player, final String particle, final int ticks, final int tick, final boolean glidingAtPeak, final int glideSustainTicks, final double peakVelocityY, final boolean glideStarted) {
-        if (!player.isOnline() || (tick >= 5 && player.isOnGround()) || tick >= Math.max(1, ticks + Math.max(20, glideSustainTicks))) {
+        if (!player.isOnline() || !canUseAbility(player) || (tick >= 5 && player.isOnGround()) || tick >= Math.max(1, ticks + Math.max(20, glideSustainTicks))) {
             fallProtection.unprotect(player.getUniqueId());
-            if (this.glideService != null) {
-                this.glideService.stop(player);
-            } else {
-                Entities.setGliding(player, false);
+            if (canUseAbility(player)) {
+                if (this.glideService != null) {
+                    this.glideService.stop(player);
+                } else {
+                    Entities.setGliding(player, false);
+                }
             }
             return;
         }
@@ -1518,7 +1640,7 @@ public final class AbilityEngine {
         final boolean reachedPeak = tick >= 5 && player.getVelocity().getY() <= peakVelocityY;
         final boolean shouldStartGlide = glidingAtPeak && !glideStarted && (reachedPeak || tick >= ticks);
         final boolean nowGliding = glideStarted || shouldStartGlide;
-        if (shouldStartGlide) {
+        if (shouldStartGlide && canUseAbility(player)) {
             if (this.glideService != null) {
                 this.glideService.start(player, Math.max(20, glideSustainTicks));
             } else {
@@ -1526,8 +1648,10 @@ public final class AbilityEngine {
             }
         }
         if (tick == ticks) {
-            Entities.push(player, 0.0D, -0.3D, 0.0D);
-            Entities.pushForward(player, 0.5D);
+            if (canUseAbility(player)) {
+                Entities.push(player, 0.0D, -0.3D, 0.0D);
+                Entities.pushForward(player, 0.5D);
+            }
         }
         scheduler.runEntityLater(player, new Runnable() {
             @Override
@@ -1596,31 +1720,6 @@ public final class AbilityEngine {
         return player.getEyeLocation().add(player.getLocation().getDirection().normalize().multiply(safeDistance));
     }
 
-    private void placeCobwebSphere(final Location center, final int radius, final long durationTicks) {
-        final World world = center.getWorld();
-        if (world == null) {
-            return;
-        }
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
-                for (int z = -radius; z <= radius; z++) {
-                    if (x * x + y * y + z * z > radius * radius) {
-                        continue;
-                    }
-                    final Location location = center.clone().add(x, y, z);
-                    placeTemporaryCobweb(location, durationTicks);
-                }
-            }
-        }
-    }
-
-    private void placeTemporaryCobweb(final Location location, final long durationTicks) {
-        final Material cobweb = Materials.find("COBWEB").orElse(Material.getMaterial("WEB"));
-        if (cobweb != null) {
-            this.temporaryBlocks.placeTemporary(location, cobweb, durationTicks, "fake");
-        }
-    }
-
     private void clearCobwebs(final Location center, final int radius) {
         this.temporaryBlocks.clearCobwebs(center, radius);
     }
@@ -1674,6 +1773,38 @@ public final class AbilityEngine {
             return !player.isSneaking();
         }
         return false;
+    }
+
+    private boolean canUseAbility(final Player player) {
+        return player != null && player.isOnline()
+                && (this.regionProtection == null || !this.regionProtection.isAbilityActivationDenied(player, player.getLocation()));
+    }
+
+    private boolean canWorldEffect(final Player source, final Location actionLocation) {
+        return canUseAbility(source) && actionLocation != null
+                && (this.regionProtection == null || !this.regionProtection.isWorldEffectDenied(source, actionLocation));
+    }
+
+    private boolean canAffect(final Player source, final LivingEntity target) {
+        if (!canUseAbility(source) || target == null || target.isDead()) {
+            return false;
+        }
+        return !(target instanceof Player) || this.regionProtection == null
+                || (!this.regionProtection.isDamageDenied(source, target)
+                && !this.regionProtection.isEffectDenied(source, target));
+    }
+
+    private boolean timelineContextAllowed(final Player player, final AbilityContext context) {
+        if (!canUseAbility(player)) {
+            return false;
+        }
+        if (context == null) {
+            return true;
+        }
+        if (context.impactLocation != null && !canWorldEffect(player, context.impactLocation)) {
+            return false;
+        }
+        return !(context.hitEntity instanceof Player) || canAffect(player, context.hitEntity);
     }
 
     private List<LivingEntity> resolveTargets(final Player player, final java.util.Map<Object, Object> data, final String fallbackType) {

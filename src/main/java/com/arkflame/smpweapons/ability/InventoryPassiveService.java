@@ -2,6 +2,7 @@ package com.arkflame.smpweapons.ability;
 
 import com.arkflame.smpweapons.SMPWeaponsPlugin;
 import com.arkflame.smpweapons.compat.scheduler.TaskHandle;
+import com.arkflame.smpweapons.hook.RegionProtectionService;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.util.PlayerItems;
 import com.arkflame.smpweapons.util.PotionEffects;
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class InventoryPassiveService {
     private final SMPWeaponsPlugin plugin;
+    private final RegionProtectionService regionProtectionService;
     private TaskHandle task;
 
     private static final int FIRST_STORAGE_SLOT = 0;
@@ -36,8 +38,9 @@ public final class InventoryPassiveService {
     private final Map<java.util.UUID, DirtyInventory> dirtyPlayers = new HashMap<java.util.UUID, DirtyInventory>();
     private final Map<java.util.UUID, PlayerInventoryState> states = new ConcurrentHashMap<java.util.UUID, PlayerInventoryState>();
 
-    public InventoryPassiveService(final SMPWeaponsPlugin plugin) {
+    public InventoryPassiveService(final SMPWeaponsPlugin plugin, final RegionProtectionService regionProtectionService) {
         this.plugin = plugin;
+        this.regionProtectionService = regionProtectionService;
     }
 
     public void start() {
@@ -216,6 +219,9 @@ public final class InventoryPassiveService {
             }
             final WeaponDefinition weapon = opt.get();
             if (!weapon.isEnabled()) {
+                continue;
+            }
+            if (this.regionProtectionService.isEffectDenied(player, player)) {
                 continue;
             }
             runInventoryPassive(player, weapon);

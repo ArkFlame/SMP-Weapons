@@ -18,6 +18,17 @@ final class SMPRegionsHookResourceTest {
     }
 
     @Test
+    void defaultConfigEnablesRegionProtection() {
+        assertTrue(loadResource("/config.yml").getBoolean("hooks.enabled"));
+        assertTrue(loadResource("/config.yml").getBoolean("hooks.fail-open"));
+    }
+
+    @Test
+    void defaultConfigEnablesWorldGuardHook() {
+        assertTrue(loadResource("/config.yml").getBoolean("hooks.worldguard.enabled"));
+    }
+
+    @Test
     void defaultConfigDeniesWhenPvpDenied() {
         assertTrue(loadResource("/config.yml").getBoolean("hooks.smp-regions.deny-when-pvp-denied"));
     }

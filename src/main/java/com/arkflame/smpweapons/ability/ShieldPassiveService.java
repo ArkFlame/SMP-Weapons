@@ -1,6 +1,7 @@
 package com.arkflame.smpweapons.ability;
 
 import com.arkflame.smpweapons.config.WeaponManager;
+import com.arkflame.smpweapons.hook.RegionProtectionService;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.util.Entities;
 import com.arkflame.smpweapons.util.Particles;
@@ -21,9 +22,11 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class ShieldPassiveService {
     private final WeaponManager weaponManager;
+    private final RegionProtectionService regionProtectionService;
 
-    public ShieldPassiveService(final WeaponManager weaponManager) {
+    public ShieldPassiveService(final WeaponManager weaponManager, final RegionProtectionService regionProtectionService) {
         this.weaponManager = weaponManager;
+        this.regionProtectionService = regionProtectionService;
     }
 
     public void handleDamage(final EntityDamageByEntityEvent event) {
@@ -49,16 +52,25 @@ public final class ShieldPassiveService {
         if (attacker == null || attacker.getUniqueId().equals(defender.getUniqueId())) {
             return;
         }
+        final boolean playerAttacker = attacker instanceof Player;
+        final boolean effectDenied = playerAttacker
+                && this.regionProtectionService.isEffectDenied(defender, attacker);
+        if (effectDenied) {
+            return;
+        }
+        final boolean damageDenied = playerAttacker
+                && this.regionProtectionService.isDamageDenied(defender, attacker);
         if (mainWeapon.isPresent() && mainWeapon.get().isEnabled()) {
-            applyReflectPassives(mainWeapon.get(), event, defender, attacker);
+            applyReflectPassives(mainWeapon.get(), event, defender, attacker, damageDenied);
         }
         if (offWeapon.isPresent() && offWeapon.get().isEnabled()) {
-            applyReflectPassives(offWeapon.get(), event, defender, attacker);
+            applyReflectPassives(offWeapon.get(), event, defender, attacker, damageDenied);
         }
     }
 
     private void applyReflectPassives(final WeaponDefinition weapon, final EntityDamageByEntityEvent event,
-                                      final Player defender, final LivingEntity attacker) {
+                                       final Player defender, final LivingEntity attacker,
+                                       final boolean damageDenied) {
         final ConfigurationSection passives = weapon.getPassivesSection();
         if (passives == null) {
             return;
@@ -87,7 +99,9 @@ public final class ShieldPassiveService {
             if (reflected <= 0.0D) {
                 continue;
             }
-            Entities.rawDamage(attacker, reflected);
+            if (!damageDenied) {
+                Entities.rawDamage(attacker, reflected);
+            }
             final Location location = defender.getLocation();
             final String sound = passive.getString("sound", null);
             if (sound != null && !sound.trim().isEmpty()) {

@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-public final class SMPRegionsHook {
+public final class SMPRegionsHook implements RegionProtectionProvider {
     private static final String REGIONS_PLUGIN_NAME = "SMPRegions";
     private static final String PVP_FLAG = "pvp";
 
@@ -39,18 +39,13 @@ public final class SMPRegionsHook {
         this.blacklistedRegions = normalizeBlacklist(section == null ? Collections.<String>emptyList() : section.getStringList("blacklist-regions"));
     }
 
-    public boolean isAllowed(final Player player, final Location actionLocation) {
-        if (!this.enabled || player == null) {
-            return true;
-        }
-        final Object resolvedApi = resolveApi();
-        if (resolvedApi == null) {
-            return true;
-        }
-        if (isDeniedAt(resolvedApi, player.getLocation())) {
+    @Override
+    public boolean isDenied(final Player player, final Location location) {
+        if (!this.enabled || player == null || location == null) {
             return false;
         }
-        return actionLocation == null || isSameBlock(player.getLocation(), actionLocation) || !isDeniedAt(resolvedApi, actionLocation);
+        final Object resolvedApi = resolveApi();
+        return resolvedApi != null && isDeniedAt(resolvedApi, location);
     }
 
     public boolean isEnabled() {
@@ -180,13 +175,4 @@ public final class SMPRegionsHook {
         return input == null ? "" : input.trim().toLowerCase(Locale.ROOT);
     }
 
-    private static boolean isSameBlock(final Location first, final Location second) {
-        if (first == null || second == null || first.getWorld() == null || second.getWorld() == null) {
-            return false;
-        }
-        return first.getWorld().equals(second.getWorld())
-                && first.getBlockX() == second.getBlockX()
-                && first.getBlockY() == second.getBlockY()
-                && first.getBlockZ() == second.getBlockZ();
-    }
 }

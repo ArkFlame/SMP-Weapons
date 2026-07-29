@@ -51,8 +51,9 @@ public final class WeaponListener implements Listener {
             return;
         }
         final Location actionLocation = event.getClickedBlock() == null ? player.getLocation() : event.getClickedBlock().getLocation();
-        if (isRegionDenied(player, actionLocation, true)) {
+        if (this.plugin.getRegionProtectionService().isAbilityActivationDenied(player, actionLocation)) {
             event.setCancelled(true);
+            this.plugin.getText().send(player, "region-denied");
             return;
         }
         if (!canUse(player, weapon.get())) {
@@ -112,8 +113,9 @@ public final class WeaponListener implements Listener {
         if (activation == null) {
             return;
         }
-        if (isRegionDenied(player, player.getLocation(), true)) {
+        if (this.plugin.getRegionProtectionService().isAbilityActivationDenied(player, player.getLocation())) {
             event.setCancelled(true);
+            this.plugin.getText().send(player, "region-denied");
             return;
         }
         if (!canUse(player, weapon.get())) {
@@ -188,8 +190,11 @@ public final class WeaponListener implements Listener {
         if (!weapon.isPresent() || !weapon.get().isEnabled()) {
             return;
         }
-        if (isRegionDenied(attacker, event.getEntity().getLocation(), false)) {
+        if (this.plugin.getRegionProtectionService().isDamageDenied(attacker, (LivingEntity) event.getEntity())) {
             event.setCancelled(true);
+            return;
+        }
+        if (this.plugin.getRegionProtectionService().isEffectDenied(attacker, (LivingEntity) event.getEntity())) {
             return;
         }
         this.plugin.getAbilityEngine().executePassive(attacker, (LivingEntity) event.getEntity(), weapon.get());
@@ -512,16 +517,6 @@ public final class WeaponListener implements Listener {
         } catch (final Exception ignored) {
             return false;
         }
-    }
-
-    private boolean isRegionDenied(final Player player, final Location actionLocation, final boolean notify) {
-        if (this.plugin.getSMPRegionsHook() == null || this.plugin.getSMPRegionsHook().isAllowed(player, actionLocation)) {
-            return false;
-        }
-        if (notify) {
-            this.plugin.getText().send(player, "region-denied");
-        }
-        return true;
     }
 
     private boolean canUse(final Player player, final WeaponDefinition weapon) {

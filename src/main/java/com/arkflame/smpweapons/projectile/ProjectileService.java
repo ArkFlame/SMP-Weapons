@@ -2,7 +2,7 @@ package com.arkflame.smpweapons.projectile;
 
 import com.arkflame.smpweapons.ability.AbilityEngine;
 import com.arkflame.smpweapons.block.TemporaryBlockService;
-import com.arkflame.smpweapons.hook.SMPRegionsHook;
+import com.arkflame.smpweapons.hook.RegionProtectionService;
 import com.arkflame.smpweapons.model.WeaponDefinition;
 import com.arkflame.smpweapons.util.FoliaAPI;
 import com.arkflame.smpweapons.util.Materials;
@@ -39,24 +39,16 @@ public final class ProjectileService {
     private final TemporaryBlockService temporaryBlocks;
     private final int maxPerCaster;
     private final int maxGlobal;
-    private final SMPRegionsHook smpRegionsHook;
+    private final RegionProtectionService regionProtection;
     private AbilityEngine abilityEngine;
     private final Map<UUID, ProjectileContext> projectiles = new HashMap<UUID, ProjectileContext>();
 
-    public ProjectileService(final FoliaAPI scheduler, final TemporaryBlockService temporaryBlocks) {
-        this(scheduler, temporaryBlocks, 10, 200, null);
-    }
-
-    public ProjectileService(final FoliaAPI scheduler, final TemporaryBlockService temporaryBlocks, final int maxPerCaster, final int maxGlobal) {
-        this(scheduler, temporaryBlocks, maxPerCaster, maxGlobal, null);
-    }
-
-    public ProjectileService(final FoliaAPI scheduler, final TemporaryBlockService temporaryBlocks, final int maxPerCaster, final int maxGlobal, final SMPRegionsHook smpRegionsHook) {
+    public ProjectileService(final FoliaAPI scheduler, final TemporaryBlockService temporaryBlocks, final int maxPerCaster, final int maxGlobal, final RegionProtectionService regionProtection) {
         this.scheduler = scheduler;
         this.temporaryBlocks = temporaryBlocks;
         this.maxPerCaster = Math.max(1, maxPerCaster);
         this.maxGlobal = Math.max(1, maxGlobal);
-        this.smpRegionsHook = smpRegionsHook;
+        this.regionProtection = regionProtection;
     }
 
     public void setAbilityEngine(final AbilityEngine abilityEngine) {
@@ -90,11 +82,23 @@ public final class ProjectileService {
         final double upward = getDouble(projectileSection, "upward", 0.10D);
         final int lifetime = Math.max(1, Math.min(600, getInt(projectileSection, "lifetime-ticks", 100)));
         final Location origin = resolveOrigin(caster, getString(projectileSection, "origin", "EYE"));
+        if (this.regionProtection != null && this.regionProtection.isWorldEffectDenied(caster, origin)) {
+            return;
+        }
         final Vector direction = origin.getDirection().normalize();
         final Vector velocity = direction.clone().multiply(speed).setY(direction.getY() * speed + upward);
         final Projectile projectile = spawnProjectile(caster, origin, getString(projectileSection, "type", "SNOWBALL"));
         if (projectile == null) {
             return;
+        }
+        if (projectile instanceof Fireball && projectileSection != null) {
+            final Fireball fireball = (Fireball) projectile;
+            if (projectileSection.isSet("yield")) {
+                fireball.setYield((float) getDouble(projectileSection, "yield", fireball.getYield()));
+            }
+            if (projectileSection.isSet("incendiary")) {
+                fireball.setIsIncendiary(projectileSection.getBoolean("incendiary"));
+            }
         }
         projectile.setVelocity(velocity);
         final ProjectileContext context = new ProjectileContext(projectile.getUniqueId(), projectile, caster.getUniqueId(), weapon, impactSection, projectileSection);
@@ -193,21 +197,25 @@ public final class ProjectileService {
             return;
         }
         final Location impact = event.getEntity().getLocation();
-        if (isRegionDenied(context.getCasterId(), impact)) {
-            event.setCancelled(true);
-            if (context.removeOnHit()) {
-                projectile.remove();
-            }
-            return;
-        }
-        if (context.cancelHitDamage()) {
-            event.setCancelled(true);
-        }
         final LivingEntity hit = event.getEntity() instanceof LivingEntity ? (LivingEntity) event.getEntity() : null;
-        runHitEffects(hit, context);
-        runHitTimeline(impact, hit, projectile, context);
-        if (!context.hasHitTimeline()) {
-            runImpact(impact, context);
+        final Player caster = onlineCaster(context.getCasterId());
+        final boolean damageDenied = caster != null && this.regionProtection != null && hit != null
+                && this.regionProtection.isDamageDenied(caster, hit);
+        final boolean effectDenied = caster != null && this.regionProtection != null && hit != null
+                && this.regionProtection.isEffectDenied(caster, hit);
+        final boolean worldDenied = caster != null && this.regionProtection != null
+                && this.regionProtection.isWorldEffectDenied(caster, impact);
+        if (context.cancelHitDamage() || damageDenied || worldDenied) {
+            event.setCancelled(true);
+        }
+        if (!effectDenied) {
+            runHitEffects(hit, context);
+        }
+        if (!worldDenied) {
+            runHitTimeline(impact, hit, projectile, context);
+            if (!context.hasHitTimeline()) {
+                runImpact(impact, context);
+            }
         }
         if (context.removeOnHit()) {
             projectile.remove();
@@ -224,15 +232,14 @@ public final class ProjectileService {
             return;
         }
         final Location impact = projectile.getLocation();
-        if (isRegionDenied(context.getCasterId(), impact)) {
-            if (context.removeOnHit()) {
-                projectile.remove();
+        final Player caster = onlineCaster(context.getCasterId());
+        final boolean worldDenied = caster != null && this.regionProtection != null
+                && this.regionProtection.isWorldEffectDenied(caster, impact);
+        if (!worldDenied) {
+            runHitTimeline(impact, null, projectile, context);
+            if (!context.hasHitTimeline()) {
+                runImpact(impact, context);
             }
-            return;
-        }
-        runHitTimeline(impact, null, projectile, context);
-        if (!context.hasHitTimeline()) {
-            runImpact(impact, context);
         }
         if (context.removeOnHit()) {
             projectile.remove();
@@ -301,12 +308,12 @@ public final class ProjectileService {
         }, null, 1L);
     }
 
-    private boolean isRegionDenied(final UUID casterId, final Location impact) {
-        if (this.smpRegionsHook == null || casterId == null) {
-            return false;
+    private Player onlineCaster(final UUID casterId) {
+        if (casterId == null) {
+            return null;
         }
         final Player caster = Bukkit.getPlayer(casterId);
-        return caster != null && !this.smpRegionsHook.isAllowed(caster, impact);
+        return caster != null && caster.isOnline() ? caster : null;
     }
 
     private void runHitEffects(final LivingEntity hitEntity, final ProjectileContext context) {
