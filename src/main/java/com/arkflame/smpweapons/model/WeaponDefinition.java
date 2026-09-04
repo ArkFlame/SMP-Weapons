@@ -31,6 +31,7 @@ public final class WeaponDefinition {
     private final String triggerTimeline;
     private final String triggerCooldownKey;
     private final int cooldownSeconds;
+    private final boolean visualCooldownEnabled;
     private final ConfigurationSection triggersSection;
     private final ConfigurationSection cooldownsSection;
     private final String abilityType;
@@ -65,6 +66,7 @@ public final class WeaponDefinition {
             final String triggerTimeline,
             final String triggerCooldownKey,
             final int cooldownSeconds,
+            final boolean visualCooldownEnabled,
             final ConfigurationSection triggersSection,
             final ConfigurationSection cooldownsSection,
             final String abilityType,
@@ -99,6 +101,7 @@ public final class WeaponDefinition {
         this.triggerTimeline = triggerTimeline;
         this.triggerCooldownKey = triggerCooldownKey;
         this.cooldownSeconds = cooldownSeconds;
+        this.visualCooldownEnabled = visualCooldownEnabled;
         this.triggersSection = triggersSection;
         this.cooldownsSection = cooldownsSection;
         this.abilityType = abilityType;
@@ -122,6 +125,10 @@ public final class WeaponDefinition {
         final ConfigurationSection passive = section.getConfigurationSection("passive");
         final TriggerData triggerData = TriggerData.from(trigger, triggers, section.getConfigurationSection("cooldowns"));
         final List<String> materials = item == null ? Collections.singletonList("DIAMOND_SWORD") : MaterialsList.from(item.get("material"));
+        final boolean visualCooldownEnabled = section.getBoolean(
+                "visual-cooldown",
+                !containsMaterialAlias(materials, "SHIELD")
+        );
         final Integer model = integerOrNull(item == null ? null : item.get("custom-model-data"));
         final Integer legacyModel = integerOrNull(legacy == null ? null : legacy.get("custom-model-data"));
         final ConfigurationSection banner = item == null ? null : item.getConfigurationSection("banner");
@@ -148,6 +155,7 @@ public final class WeaponDefinition {
                 triggerData.timeline,
                 triggerData.cooldownKey,
                 triggerData.cooldownSeconds,
+                visualCooldownEnabled,
                 triggers,
                 section.getConfigurationSection("cooldowns"),
                 ability == null && triggerData.timeline != null ? "TIMELINE" : (ability == null ? "NONE" : ability.getString("type", "NONE")),
@@ -184,6 +192,7 @@ public final class WeaponDefinition {
     public String getTriggerTimeline() { return triggerTimeline; }
     public String getTriggerCooldownKey() { return triggerCooldownKey; }
     public int getCooldownSeconds() { return cooldownSeconds; }
+    public boolean isVisualCooldownEnabled() { return visualCooldownEnabled; }
     public ConfigurationSection getTriggersSection() { return triggersSection; }
     public ConfigurationSection getCooldownsSection() { return cooldownsSection; }
     public String getAbilityType() { return abilityType; }
@@ -195,6 +204,25 @@ public final class WeaponDefinition {
     public ConfigurationSection getPassivesSection() { return passivesSection; }
     public boolean isPreventPlace() { return preventPlace; }
     public String getSourceFile() { return sourceFile; }
+
+    private static boolean containsMaterialAlias(final List<String> aliases, final String expected) {
+        if (aliases == null || expected == null) {
+            return false;
+        }
+        final String normalizedExpected = normalizeMaterialAlias(expected);
+        for (final String alias : aliases) {
+            if (normalizedExpected.equals(normalizeMaterialAlias(alias))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeMaterialAlias(final String raw) {
+        return raw == null
+                ? ""
+                : raw.trim().toUpperCase(java.util.Locale.ROOT).replace('-', '_').replace(' ', '_');
+    }
 
     private static List<String> defaultItemFlags() {
         final List<String> flags = new ArrayList<String>();

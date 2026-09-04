@@ -74,7 +74,9 @@ public final class CooldownService {
         }
         final String key = storageKey(weapon, cooldownKey);
         map.put(key, Long.valueOf(System.currentTimeMillis() + seconds * 1000L));
-        setItemCooldown(player, itemForCooldown == null ? player.getItemInHand() : itemForCooldown, seconds * 20);
+        if (weapon.isVisualCooldownEnabled()) {
+            setItemCooldown(player, itemForCooldown == null ? player.getItemInHand() : itemForCooldown, seconds * 20);
+        }
         if (readyNotification) {
             scheduler.runEntityLater(player, new Runnable() {
                 @Override

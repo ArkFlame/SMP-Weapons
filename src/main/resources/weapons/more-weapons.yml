@@ -35,8 +35,8 @@ weapons:
       cooldown: 40
     ability:
       type: ZOOM_MACE
-      upward: 5.0
-      downward: 4.0
+      upward: 7.0
+      downward: 6.0
       radius: 6.0
       damage: 8.0
 

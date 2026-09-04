@@ -318,6 +318,15 @@ final class ClientWeaponsResourceTest {
         }
     }
 
+    @Test
+    void repellShieldDisablesVisualCooldownInBundledResource() throws Exception {
+        try (InputStream stream = getClass().getResourceAsStream("/weapons/client-weapons.yml")) {
+            java.util.Objects.requireNonNull(stream, "client weapons resource missing");
+            final YamlConfiguration configuration = load(stream);
+            assertFalse(configuration.getBoolean("weapons.repell_shield.visual-cooldown", true));
+        }
+    }
+
     private static YamlConfiguration load(final InputStream stream) {
         final YamlConfiguration configuration = new YamlConfiguration();
         try {

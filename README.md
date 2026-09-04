@@ -58,6 +58,33 @@ weapons/custom-weapons.yml
 
 Old Skript weapons are recognized by their original display names and custom model data where available. The default generated FFA weapons preserve the original titles, lore and custom model data values from the provided Skript.
 
+### Per-weapon visual cooldown
+
+`visual-cooldown` is a root weapon key that accepts a YAML boolean.
+
+**Default rules:**
+
+- Missing key defaults to `true` for normal weapons.
+- Missing key defaults to `false` when the configured `item.material` list contains `SHIELD`.
+- An explicit `visual-cooldown: true` or `visual-cooldown: false` overrides either default.
+
+**Effect:**
+
+When `false`, the server skips Bukkit/Paper hotbar item cooldown application for that weapon. SMPWeapons logical cooldown, action-bar cooldown rejection, reset commands, and ready notification remain active regardless.
+
+**Example:**
+
+```yaml
+  repell_shield:
+    enabled: true
+    display-id: "Repell Shield"
+    visual-cooldown: false
+    item:
+      material: [SHIELD, BANNER]
+      # ...
+```
+
+State changes from `/smpweapons reload` apply to edited weapon configuration immediately.
 
 ## 1.0.1 Update
 

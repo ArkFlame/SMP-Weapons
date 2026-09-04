@@ -22,8 +22,8 @@ weapons:
       cooldown: 30
     ability:
       type: DASH_AOE
-      upward: 0.5
-      forward: 2.5
+      upward: 1.0
+      forward: 2.2
       burst-radius: 3.0
       trail-radius: 2.0
       push-speed: 1.0
@@ -53,8 +53,8 @@ weapons:
       cooldown: 25
     ability:
       type: DASH_AOE
-      upward: 0.7
-      forward: 2.2
+      upward: 0.9
+      forward: 2.6
       burst-radius: 3.0
       trail-radius: 2.0
       push-speed: 1.0
@@ -84,8 +84,8 @@ weapons:
       cooldown: 30
     ability:
       type: DASH_AOE
-      upward: 0.5
-      forward: 1.7
+      upward: 0.6
+      forward: 3.0
       burst-radius: 3.0
       trail-radius: 2.0
       push-speed: 1.5
@@ -118,8 +118,8 @@ weapons:
       cooldown: 35
     ability:
       type: VENOM_DASH
-      upward: 0.5
-      forward: 2.2
+      upward: 1.2
+      forward: 3.9
       radius: 5.0
       poison-amplifier: 1
       weakness-amplifier: 1
